@@ -1,0 +1,96 @@
+\documentclass[preprint]{aastex}
+\usepackage{amssymb, amsmath}
+\usepackage{color}
+
+\newcommand{\cmnt}[1]{}
+
+\newcommand{\shcal}{\bar m}
+
+\newcommand{\CMH}[1]{{\textcolor{red}{#1}}}
+\newcommand{\flagbar}{{\bfseries *** STUFF BELOW HERE IS OLD! ***}}
+
+% Material that only appears in the long or short version of the paper
+\newcommand{\longversiononly}[1]{#1} % <-- Change {#1} to {} to for short version
+\newcommand{\shortversiononly}[1]{} % <-- Change {} to {#1} for long version
+
+\shorttitle{Weak lensing requirements}
+%\shortauthors{Our SIT}
+
+\begin{document}
+
+\title{WFIRST weak lensing requirements: explanatory supplement}
+
+\date{Version 2 -- Draft: \today}
+
+%\author{Our SIT}
+%\affil{?}
+%\email{POC email}
+
+\begin{abstract}
+???
+\end{abstract}
+
+\keywords{???}
+
+\tableofcontents
+
+\CMH{{\bfseries Warning}: This document is being circulated for comments on its structure. The numbers herein are still being worked.}
+
+\section{Introduction}
+\label{sec:intro}
+\input{introduction.tex}
+
+\section{Additive and multiplicative biases}
+\label{sec:add_mult}
+
+\input{add_mult_preamble.tex}
+
+\subsection{Setting requirements}
+
+\input{setting_reqs.tex}
+
+\section{Models used for assessment}
+
+\input{models_preamble.tex}
+
+\subsection{Shape measurement}
+\label{ss:shape}
+
+\input{shape_model.tex}
+
+\subsection{PSF models}
+\label{ss:PSF}
+
+\input{psf_model.tex}
+
+\section{Wavefront drift requirements}
+\label{sec:drift}
+
+\input{wavefront_drift.tex}
+
+\section{Conclusion}
+\input{conclusions.tex}
+
+\section*{Acknowledgements}
+
+\appendix
+
+\section{Fourier transforms and power spectra of time series}
+\label{sec:FTTime}
+
+\input{appendix_time_series.tex}
+
+\section{The shear field and its power spectrum}
+\label{sec:Fourier-tensor}
+
+\input{appendix_fourier.tex}
+
+\section{Conventions for image analysis}
+\label{sec:ellipticity}
+
+\input{appendix_image_analysis.tex}
+
+% The bibliography
+\input{bibliography.tex}
+
+\end{document}

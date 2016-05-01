@@ -1,0 +1,12 @@
+# List of filters for weak lensing
+#
+# This file should have 3 columns:
+# [1] Filter name (any string, alphanumeric characters only)
+# [2] Min wavelength (microns)
+# [3] Max wavelength (microns)
+#
+# Lines beginning with # are comments and should be ignored by scripts reading this file.
+#
+J 1.131 1.454
+H 1.380 1.774
+F184 1.683 2.000

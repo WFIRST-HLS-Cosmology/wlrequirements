@@ -1,0 +1,37 @@
+#!/usr/bin/perl
+
+# Extract template information
+$script = q{sed -n '/^[^\#]/p'}; # Strip comments
+@templatedata = split "\n", `$script InputData/Bands.txt`;
+$Ntemp = scalar @templatedata;
+for $it (0..$Ntemp-1) {
+  ($lminbin[$it], $lmaxbin[$it]) = split ' ', $templatedata[$it];
+}
+
+# Get template info
+$out = `./RUN_A0 2 0 a`;
+for $itemp (0..$Ntemp-1) {
+  $out =~ m/Template +$itemp\: +\[(\d+), +(\d+)\]/;
+  $lmin[$itemp] = $1; $lmax[$itemp] = $2;
+}
+
+@data2 = split "\n", `./RUN_A0 2 0 a | tail -n $Ntemp`;
+@data5 = split "\n", `./RUN_A0 5 0 a | tail -n $Ntemp`;
+@data4 = split "\n", `./RUN_A0 4 0 a | tail -n $Ntemp`;
+
+open(OUT, '>TeX/tab_addbands.tex') or die;
+
+for $itemp (0..$Ntemp-1) {
+  $Z = sqrt(0.25/$Ntemp);
+
+  @info2 = split ' ', $data2[$itemp];
+  @info5 = split ' ', $data5[$itemp];
+  @info4 = split ' ', $data4[$itemp];
+  $A0flat = $Z**.5 * $info2[2];
+  $N1 = 0; while ($A0flat<10**$N1) {$N1--;}
+
+  print OUT (sprintf "$itemp \& $lmin[$itemp] \& $lmax[$itemp] \& %6.4f \& \$%5.3f\\times 10^\{$N1\}\$ \& %6.3f \& %6.3f \\\\ \n",
+    $Z, $A0flat/10**$N1, 1./($info5[2]/$info2[2])**2, 1./($info4[2]/$info2[2])**2 );
+}
+
+close OUT;

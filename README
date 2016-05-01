@@ -1,0 +1,99 @@
+*** Please read this in its entirety before starting to write code. ***
+
+== Directory and File Structure ==
+
+I am anticipating that most new tools will be introduced by building 
+their own sub-directories within wlrequirements. Several directories are 
+used for specific purposes:
+
+ErrorTree/  Script outputs that are terms in the error tree should go here.
+            (2016-05-01: This is currently empty. When there are enough
+            contributions to justify it, we will build postprocessing scripts
+            that read this directory.)
+
+InputData/  All sources of input data on the instrument design should go here
+            (e.g. filter bandpasses, properties of the galaxy sample). All
+            scripts reading text files from this directory should remove lines
+            beginning with a hashtag (#). If your script requires information
+            on the galaxy sample or instrument properties, please check first
+            whether that information is here!
+
+scr/        Used for scratch work (files that are written and then read by
+            the same script).
+
+TeX/        Used for the paper (which serves as both the explanatory
+            supplement and will be turned into a journal submission following
+            SRR).
+
+== External Programs, Codes, and Libraries ==
+
+The WL requirements package uses external tools that may be in different 
+places on different machines.
+
+You will need to create a "commands" file in this directory, each line 
+of which is of the form:
+
+class::/Users/christopherhirata/Desktop/CLASS_CMB/class_public-2.4.3/class
+
+This tells the scripts where to find various external programs. The 
+format is that the command name is first, followed by two colons (::), 
+and then the path for that command (including the command itself).
+
+The current list of commands required, and links for the packages, is 
+noted below:
+
+class [http://class-code.net]
+
+Distributions of gcc and perl are required:
+
+(*) gcc should be in your PATH environment variable
+
+(*) perl is normally in /usr/bin/perl; if not but it is in your PATH, 
+the executable perl scripts can be run with "perl [executable name 
+here]".
+
+== Current top-level scripts ==
+
+Each script should have comments describing the input and output. Please 
+note that some scripts may take up to a few hours to run on a modern 
+laptop. If you write a script that takes significantly longer than this, 
+please put a warning in its comments!
+
+BUILD_ABERRATION_SENSITIVITIES:
+  Reports to the user (stdout) a table of the coefficients of the 
+sensitivities of the galaxy shear to each aberration (the "C" 
+coefficients in the sensitivity matrix). Also reports, for each l-bin, 
+the scaling factors (S-values) for that combination of aberrations. (The 
+scripts in PSF_P1G1 must be run first.)
+
+CLEANUP:
+  Removes temporary files that are not synchronized by GitHub (prompts 
+user for removing each one)
+
+MAKETAB_*:
+  These scripts build the table .tex files in the TeX/ directory. The 
+naming convention is that a table named \label{tab:XXX} in the TeX 
+source should be in a file tab_XXX.tex in the TeX/ directory, built by 
+the script MAKETAB_XXX in the top-level directory. The table .tex files 
+are synchronized by GitHub so that users who haven't run the scripts can 
+still read the paper. As a consequence, you should only use the 
+MAKETAB_* scripts when you really need to update that table.
+
+RUN_A0:
+  This is the main script for computing additive and multiplicative 
+systematics budgets, as described in the "Setting requirements" section 
+of the paper.
+
+SETUP_CLASS:
+  This builds the WL power spectra needed by RUN_A0 (using CLASS). 
+RUN_A0 can do this itself, but it takes time and is not implemented by 
+many scripts calling RUN_A0. Therefore I recommend running SETUP_CLASS 
+first, and then again if you change the z-bins or lmax (probably not 
+frequent).
+
+== Current directories with scripts and tools ==
+
+PSF_P1G1:
+  Galaxy sensitivity coefficients according to models P1 (PSF) and G1 
+(shape measurement). You can build the coefficients with the "BUILD" 
+script in this directory.

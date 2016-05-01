@@ -1,0 +1,16 @@
+# List of l-bands to use in the analysis
+#
+# Columns:
+# [1] lmin (inclusive)
+# [2] lmax (inclusive)
+#
+# The bands should be disjoint and cover the whole range of scales we want to
+# use for weak lensing.
+#
+# They are automatically counted and numbered (0 .. N-1) by the subsequent scripts.
+#
+10 30
+31 99
+100 315
+316 999
+1000 3161

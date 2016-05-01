@@ -1,0 +1,39 @@
+In order to translate a requirement on spurious shear $c$ into requirements on lower-level quantities, we need to know how a given effect -- e.g.\ an error in the PSF model -- affects the shear measurement. In principle this depends on the shape measurement algorithm, which presents a difficulty because the final shape measurement algorithm used for WFIRST has not yet been selected (and the true ``final'' version may not be set until the analysis stage). However, most methods of measuring shear have some basic properties in common -- if e.g.\ the true PSF has greater $e_1$ than the model (i.e.\ is elongated in the $x$-direction), then the inferred shear in that region of the sky will also have greater $c$; the coefficient depends on the exact distribution of galaxy morphologies and sizes, the weighting of galaxy isophotes, the way in which the PSF ellipticity varies with radius, etc. Therefore we will consider a range of methods when we determine the quantity $\partial\gamma_{\rm obs}(z_i)/\partial X$, where $\gamma_{\rm obs}$ is the measured shear in a region (and in redshift slice $i$) and $X$ is any quantity on which we want to set a knowledge requirement. The spurious shear in bin $i$ is taken to be 
+\begin{equation}
+c_i = c(z_i) = \frac{\partial\gamma_{\rm obs}(z_i)}{\partial X} \Delta X,
+\label{eq:X-shape}
+\end{equation}
+where $\Delta X = X_{\rm true} - X_{\rm model}$ is the error in knowledge of $X$. In the context of the additive systematic errors, the ratios of the partial derivatives $\partial\gamma_{\rm obs}(z_i)/\partial X$ set the redshift slice dependence: if $i({\rm max})$ is the redshift bin with the largest derivative (in absolute value) then
+\begin{equation}
+w_i = \frac{\partial\gamma_{\rm obs}(z_i)/\partial X}{\partial\gamma_{\rm obs}(z_{i({\rm max})})/\partial X}
+\end{equation}
+and the reference additive shear is $c_{\rm ref} = c_{i({\rm max})}$.
+
+\CMH{Finish! Also describe implementation for multiplicative systematics.}
+
+In both the additive and multiplicative cases, to compute the derivatives relating shear systematics quantities (with requirements set in \S\ref{sec:add_mult}) to lower-level quantities (knowledge of $X$) we need a simulation package that generates galaxies, measures their photometric properties, generates a shear estimate, and repeats this varying the quantity $X$. The models used for this process are:
+\begin{list}{$\bullet$}{}
+\item {\em Model G1: Christopher Hirata (The Ohio State University).} This is the current default model, and is chosen for its extreme simplicity (and consequent ease of implementation in Phase A).
+\end{list}
+
+\CMH{Need at least one more model here, to see how much this affects the results.}
+
+\subsubsection{Model G1 (C. Hirata)}
+
+This is a simple model. The ``galaxy'' used is based on a galaxy with an exponential profile, $f_{\rm circ}({\bf x}) \propto e^{-1.67834|{\bf x}|/r_{\rm eff}}$, where $r_{\rm reff}$ is the half-light radius. It can optionally be sheared by applying a {\em finite} shear $\gamma$ to arrive at the galaxy $f({\bf x})$. This is convolved with the PSF (see the description of models: \S\ref{ss:PSF}) to arrive at a simulated image $I({\bf x})$. The ellipticity of this image is then measured as in Appendix~\ref{sec:ellipticity}.
+
+The observed 2-component ellipticity $e_I$ of the galaxy is related to the shear by a $2\times 2$ responsivity matrix
+\begin{equation}
+R_{ij} = \frac{\partial e_{I,i}}{\partial\gamma_j} = {\cal R}\delta_{ij} + R^{\rm aniso}_{ij},
+\end{equation}
+which we have decomposed into an isotropic part ${\cal R}$ and a traceless matrix $R^{\rm aniso}$ characterizing the anisotropic part of the responsivity. The inverse of the responsivity matrix relates a bias in the galaxy ellipticities to a bias in the shear:
+\begin{equation}
+c_i = \sum_{j=1}^2 [{\bf R}^{-1}]_{ij} \frac{\partial e_{I,j}}{\partial X} \Delta X.
+\end{equation}
+Since the isotropic part of the responsivity dominates except for extreme PSF ellipticity, anisotropic noise correlations, etc., we take the isotropic part and write
+\begin{equation}
+\frac{\partial\gamma_{{\rm obs},i}(z_k)}{\partial X} = \left\langle {\cal R}^{-1} \frac{\partial e_{I,i}}{\partial X} \right\rangle,
+\end{equation}
+where the average is taken over the source galaxies in that redshift bin. The various partial derivatives are easily computed as finite differences of the galaxy simulation and ellipticity measurement process.
+
+As Model G1 is intended to be simple, the average is taken only over the distribution of source sizes $r_{\rm eff}$ -- we do not include the intrinsic source ellipticity or a distribution of Sersi\'c indices. \CMH{Will need to improve this! Also need to think more about, e.g.\ ordering of averaging and inversion, as I haven't done this properly yet.}

@@ -1,0 +1,4 @@
+#!/usr/bin/perl
+
+# Script to generate CLASS output files with the correct redshift bins.
+system './RUN_A0 2 1 a';

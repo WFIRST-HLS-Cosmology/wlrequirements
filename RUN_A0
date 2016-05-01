@@ -1,0 +1,478 @@
+#!/usr/bin/perl
+
+### -- Outputs --
+#
+# The script *must* return as its last $Ntemp lines a list with 3 space-delimited columns:
+# [1] i(bin number)
+# [2] S/N^2 for amplitude 1
+# [3] amplitude for S/N=1
+#
+# Any lines before this are for diagnostics and scripts calling RUN_A0 should remove them
+# (e.g. with a tail command)
+#
+
+### -- Figure out command line inputs --
+#
+@inputs = @ARGV;
+$command_line_input = 0;
+# If help is requested:
+if (scalar @inputs > 0) {
+  if ($inputs[0] eq '--help') {
+    die "Usage: ./RUN_A0 REWEIGHT_FLAG RERUN_FLAG TYPE_CODE <file1> <file2> ...\nTypes: a=additive, m=multiplicative\n";
+  }
+}
+# If those inputs are set:
+if (scalar @inputs > 0) {
+  $command_line_input = 1;
+  ($REWEIGHT_FLAG, $RERUN_FLAG, $TYPE_CODE) = @inputs;
+  if (scalar @inputs > 3) {
+    $InFile1 = $inputs[3];
+    print "input file 1 = $InFile1\n";
+  }
+} else {
+  $RERUN_FLAG = 0;
+  $TYPE_CODE = 'a';
+}
+
+
+### -- Files needed --
+#
+# RUN_A0 (this script)
+# wfirst-req.ini.template (template for CLASS input)
+# matrinv.c (matrix inversion routine source)
+#
+# also will need an installation of CLASS -- command given below.
+#
+# This script must be run from this directory in order to produce output in the
+# correct place.
+
+# CLASS command
+@commands = split "\n", `cat commands`;
+$CLASS = '';
+for $line (@commands) {
+  if ($line =~ m/^class\:\:(.+)$/) {$CLASS = $1;}
+}
+if ($CLASS eq '') {die "Can't find class.\n";}
+print "CLASS command --> $CLASS\n";
+
+# Get galaxy densities in each redshift bin
+$script = q{sed -n '/^[^\#]/p'};
+@data = split "\n", `$script InputData/density.dat`;
+$Nz = scalar @data; $Nz--;
+($new_Nz, $gamma_rms) = split ' ', $data[0];
+if ($new_Nz != $Nz) {die "Error: InputData/density.dat: inconsistent number of lines of data\n";}
+for $j (0..$Nz-1) {($my_z[$j], $my_halfwidth[$j], $nbar_my_z[$j]) = split ' ', $data[$j+1];}
+#
+# Test only: make sure we read the density file correctly.
+# print "Nz=$Nz gamma_rms=$gamma_rms. z=<@my_z> nbar=<@nbar_my_z>\n";
+
+# Additive shear weights
+# (i.e. assumed additive shear in jth bin is this number times the reference additive shear)
+#
+# If REWEIGHT_FLAG = 0 then the weights are as given here (un-comment @wt_z)
+# If REWEIGHT_FLAG = 1 then finds the "best case" weights (i.e. that will give the weakest requirement) from <w>=1
+# If REWEIGHT_FLAG = 2 then forces equal weights (all 1)
+# If REWEIGHT_FLAG = 3 then finds the "worst case" weights (i.e. that will give the tightest requirement) from <w>=1, w>=0
+# If REWEIGHT_FLAG = 4 then finds the "worst case" weights (i.e. that will give the tightest requirement) from 0<=w<=1
+# If REWEIGHT_FLAG = 5 then finds the "worst case" weights (i.e. that will give the tightest requirement) from -1<=w<=1
+# If REWEIGHT_FLAG = 6 then forces <w>=1 but weights proportional to z
+# IF REWEIGHT_FLAG = 7 then reads w from a file
+#
+# Note: <w>=1 means a requirement is written on the *mean* systematic shear of all bins
+# whereas max w=1 means a requirement is written on the *maximum* systematic shear of all bins
+# so option 3 will lead to a smaller number than option 4, but they don't mean the same thing!
+#
+# Multiplicative shear weights:
+# If REWEIGHT_FLAG = 1000 then the weights are as given here (un-comment @wt_z)
+# If REWEIGHT_FLAG = 1002 then forces equal weights (all 1)
+# If REWEIGHT_FLAG = 1004 then finds the "worst case" weights (i.e. that will give the tightest requirement) from 0<=w<=1
+# If REWEIGHT_FLAG = 1005 then finds the "worst case" weights (i.e. that will give the tightest requirement) from -1<=w<=1
+# If REWEIGHT_FLAG = 1007 then reads w from a file
+#
+if ($command_line_input==0) {
+  $REWEIGHT_FLAG = 2;
+}
+
+# Test re-weights
+#@wt_z = (1,1,1,1,1,1,1);
+#for $za (0..$Nz-1) {$wt_z[$za]=0;} $wt_z[3]=1;
+
+# Sky area, in square degrees
+$Area = 10000.;
+
+# Extract template information
+$script = q{sed -n '/^[^\#]/p'}; # Strip comments
+@templatedata = split "\n", `$script InputData/Bands.txt`;
+$Ntemp = scalar @templatedata;
+for $it (0..$Ntemp-1) {
+  ($lminbin[$it], $lmaxbin[$it]) = split ' ', $templatedata[$it];
+}
+
+# If multiplicative case, force one merged bin
+if ($TYPE_CODE eq 'm') {$lmaxbin[0] = $lmaxbin[$Ntemp-1]; $Ntemp=1;}
+
+# Maximum multipole
+$lmax = $lmaxbin[$Ntemp-1]+1;
+
+### -- Shouldn't need to change things below here except to add functionality or change spatial templates ---
+
+# Build matrix inverter
+system 'gcc matrinv.c -o matrinv.x -lm -Wall';
+
+# CLASS input files
+$ini = "wfirst-req.ini";
+
+# Math
+$pi = 4*atan2(1,1);
+$fsky = $Area * $pi/129600.;
+
+# Get shape noise C_l's
+for $jz (0..$Nz-1) {
+  $NL[$jz] = $gamma_rms**2/$nbar_my_z[$jz]/(180./$pi*60.)**2;
+}
+
+# Scale-dependent templates
+for $l (2..$lmax) {
+  # <== SET PROPERTIES OF SCALE DEPENDENT TEMPLATES HERE ==>
+  for $it (0..$Ntemp-1) {
+    $lbmin = $lminbin[$it];
+    $lbmax = $lmaxbin[$it];
+    $T[$it][$l] = ($l>=$lbmin and $l<=$lbmax)? 2.*$pi/$l/($l+1.): 0;
+    if ($l==2) {print "Template $it: [$lbmin, $lbmax]\n";}
+  }
+}
+# Normalize
+for $itemp (0..$Ntemp-1) {
+  $sum=0;
+  for $l (2..$lmax) {$sum += $T[$itemp][$l] * (2.*$l+1.)/4./$pi;}
+  for $l (2..$lmax) {$T[$itemp][$l] /= $sum;}
+  $SN2Temp[$itemp] = 0.;
+}
+
+# Make scratch folder
+if (not (-e 'scr' and -d 'scr')) {system "mkdir scr";}
+
+# Get n_i = nbar(bin i)/nbar(total)
+$nt = 0;
+for $za (0..$Nz-1) {$nt += $nbar_my_z[$za];}
+for $za (0..$Nz-1) {$n[$za] = $nbar_my_z[$za]/$nt;}
+
+# Generate .ini file
+#
+# Generate text to insert
+$textz = $my_z[0];
+for $jz (1..$Nz-1) {$textz .= q(,).$my_z[$jz];}
+$Nsub = sprintf "%d", $Nz-1;
+# Insert text!
+$text = `cat InputData/$ini.template`;
+$lmax_str = sprintf "%d", $lmax;
+$text =~ s/\%\%0/$lmax_str/g;
+$text =~ s/\%\%1/$textz/;
+$text =~ s/\%\%2/$Nsub/;
+open(OUT, ">$ini") or die;
+print OUT $text;
+close OUT;
+
+# Run CLASS and get WL power spectra
+if ($RERUN_FLAG!=0) {
+  if (system "$CLASS $ini") {die;}                      # <--- HERE IS THE CALL TO CLASS!
+}
+#
+# ... and extract the appropriate columns
+@data = split "\n", `cat scr/wfirst_cl.dat`;
+$i=0;
+while ($data[$i] !~ m/\#.*1\:l/) {$i++;}
+@cols = split ' ', $data[$i];
+$NCOL = scalar @cols;
+for $j (0..$NCOL-1) {
+  if ($cols[$j] =~ m/(\d+)\:lens\[(\d+)\]-lens\[(\d+)\]/) {
+    $ic = $1; $za = $2; $zb = $3;
+    $col[$za-1][$zb-1] = $ic;
+    $col[$zb-1][$za-1] = $ic;
+  }
+}
+#
+# Now get the power spectra
+LINEL: for $line (@data) {
+  next LINEL if ($line =~ m/^\#/); # skip comments
+
+  @ThisL = split ' ', $line;
+  @ThisL = ('',@ThisL);          # Pad by 1 so that CLASS output columns (starting with 1) match Perl notation (starting with 0)
+  $l = $ThisL[1];
+  #
+  #print "$l\n" if $l%10==0; # test, if needed
+  #
+  # Extract Cl's.
+  for $za (0..$Nz-1) { for $zb (0..$Nz-1) {
+    $CL = $ThisL[$col[$za][$zb]];
+    $CL *= 2.*$pi/$l/($l+1.);      # convert Delta_l --> C_l
+    $CL *= ($l*($l+1)/2.)**2;      # convert potential --> shear
+
+    # Make PowerNoNoise and Power (two matrices; latter includes shape noise)
+    $PowerNoNoise[$za][$zb] = $CL;
+    $Power[$za][$zb] = $CL;
+    if ($za==$zb) {$Power[$za][$za] += $NL[$za];}
+  }}
+
+  # Get inverse-power matrix
+  open(OUT, "| ./matrinv.x > temp");
+  print OUT "$Nz\n";
+  for $za (0..$Nz-1) { for $zb (0..$Nz-1) { print OUT "$Power[$za][$zb]\n"; }}
+  close OUT;
+  @CtotInverse = split ' ', qx{cat temp};
+  system "rm temp";
+
+  # If REWEIGHT_FLAG is turned on, over-write the weights at this step
+  if ($REWEIGHT_FLAG==1) {
+    # If the covariance matrix (Power) is C_{ij}
+    # and the weights are restricted to sum_i w_i n_i = 1
+    # Then we can minimize prod = w^T C^-1 w by setting:
+    # w_i = [sum_j C_{ij} n_j] / [sum_{jk} C_{jk} n_j n_k]
+    #
+    # Now build weights:
+    $denom = 0;
+    for $za (0..$Nz-1) {
+      for $zb (0..$Nz-1) {
+        $denom += $Power[$za][$zb]*$n[$za]*$n[$zb];
+      }
+    }
+    for $za (0..$Nz-1) {
+      $numer = 0;
+      for $zb (0..$Nz-1) {
+        $numer += $Power[$za][$zb]*$n[$zb];
+      }
+      $wt_z[$za] = $numer/$denom;
+    }
+  }
+  if ($REWEIGHT_FLAG==2 or $REWEIGHT_FLAG==1002) {
+      for $za (0..$Nz-1) {$wt_z[$za]=1.;}
+  }
+  if ($REWEIGHT_FLAG==3) {
+    # If the covariance matrix (Power) is C_{ij}
+    # and the weights are restricted to sum_i w_i n_i = 1
+    # Then we can maximize prod = w^T C^-1 w (subject to positive weights) using
+    # the rule that a positive-definite quadratic function restricted to a plane
+    # and with linear inequality constraints is maximized by saturating the constraints.
+    # --> So we need to search (0...1/n_i...0) for each redshift bin i.
+    #
+    $pmax = $this_za = 0;
+    for $za (0..$Nz-1) {
+      $p = $CtotInverse[$za*$Nz+$za]/$n[$za]**2;
+      if ($p>$pmax) {$this_za = $za; $pmax = $p;}
+    }
+    for $za (0..$Nz-1) {$wt_z[$za]=0.;}
+    $wt_z[$this_za] = 1./$n[$this_za];
+  }
+  if ($REWEIGHT_FLAG==4) {
+    # If the covariance matrix (Power) is C_{ij}
+    # and the weights are restricted to 0<w_i<1
+    # Then we can maximize prod = w^T C^-1 w (subject to positive weights) by testing every corner
+    #
+    # First get n_i = nbar(bin i)/nbar(total)
+    $pmax=0;
+    @wt_z=();
+    for $iperm (0..2**$Nz-1) {
+      $ip2=$iperm;
+      for $za (0..$Nz-1) {
+        $wt_z_this[$za] = $ip2&1;
+        $ip2>>=1;
+      }
+      $p=0;
+      for $za (0..$Nz-1) {
+        for $zb (0..$Nz-1) {
+          $p += $CtotInverse[$za*$Nz+$zb]*$wt_z_this[$za]*$wt_z_this[$zb];
+        }
+      }
+      if ($p>$pmax) {$pmax = $p; @wt_z=@wt_z_this;}
+    }
+  }
+  if ($REWEIGHT_FLAG==5) {
+    # If the covariance matrix (Power) is C_{ij}
+    # and the weights are restricted to -1<w_i<1
+    # Then we can maximize prod = w^T C^-1 w (subject to positive weights) by testing every corner
+    #
+    # First get n_i = nbar(bin i)/nbar(total)
+    $pmax=0;
+    @wt_z=();
+    for $iperm (0..2**$Nz-1) {
+      $ip2=$iperm;
+      for $za (0..$Nz-1) {
+        $wt_z_this[$za] = $ip2&1? 1: -1;
+        $ip2>>=1;
+      }
+      $p=0;
+      for $za (0..$Nz-1) {
+        for $zb (0..$Nz-1) {
+          $p += $CtotInverse[$za*$Nz+$zb]*$wt_z_this[$za]*$wt_z_this[$zb];
+        }
+      }
+      if ($p>$pmax) {$pmax = $p; @wt_z=@wt_z_this;}
+    }
+  }
+  if ($REWEIGHT_FLAG==6) {
+    # Weights proportional to z, number-weighted mean 1
+    $sn = 0; for $jz (0..$Nz-1) {$sn += $n[$jz]*$my_z[$jz];} 
+    @wt_z=();
+    for $jz (0..$Nz-1) {$wt_z[$jz] = $my_z[$jz]/$sn;}
+  }
+  if ($REWEIGHT_FLAG==7 or $REWEIGHT_FLAG==1007) {
+    # ... weights from file
+    @wt_z = split ' ', `cat $InFile1`;
+  }
+
+  # Test -- set to $l==-1 to turn off
+  if ($l==-1) {
+    print "\nLensing shear power spectra:\n == CASE OF l=$l (fsky=$fsky) ==\n";
+    for $za (0..$Nz-1) {
+      for $zb (0..$Nz-1) {
+        print (sprintf " %12.5E", $Power[$za][$zb]);
+      }
+      print "\n";
+    }
+    print "\n == Inverse covariance matrix, per mode ==\n";
+    for $za (0..$Nz-1) {
+      for $zb (0..$Nz-1) {
+        print (sprintf " %12.5E", $CtotInverse[$za*$Nz+$zb]);
+      }
+      print "\n";
+    }
+    print "\n -- Noises --\n";
+    for $za (0..$Nz-1) {print (sprintf " %10.4E", $NL[$za]);}
+    print "\n -- Densities --\n";
+    for $za (0..$Nz-1) {print (sprintf " %8.5f", $n[$za]);}
+    print "\n -- Weights --\n";
+    for $za (0..$Nz-1) {print (sprintf " %8.5f", $wt_z[$za]);}
+    print "\n";
+  }
+
+  # REWEIGHT_FLAG options for the multiplicative case
+  if ($REWEIGHT_FLAG==1004) {
+    # If the weights are restricted to 0<w_i<1
+    # Then we can maximize p = w^T D w (subject to positive weights) by testing every corner
+    # where D_{ac} = sum_{bd} [ P_{ab} C^-1_{bc} P_{cd} C^-1_{da} + P_{ab} C^-1_{bd} P_{cd} C^-1_{ca} ]
+    #
+    $pmax=0;
+    @wt_z=();
+    for $za (0..$Nz-1) {
+      for $zc (0..$za) {
+        $Dmat[$za][$zc] = 0.;
+        for $zb (0..$Nz-1) {
+          for $zd (0..$Nz-1) {
+            $Dmat[$za][$zc] += $PowerNoNoise[$za][$zb] * $PowerNoNoise[$zc][$zd]
+                              * ($CtotInverse[$zb*$Nz+$zc] * $CtotInverse[$zd*$Nz+$za] + $CtotInverse[$zb*$Nz+$zd] * $CtotInverse[$zc*$Nz+$za]);
+          }
+        }
+      }
+    }
+    for $za (0..$Nz-1) { for ($zc=$za+1;$zc<$Nz;$zc++) {$Dmat[$za][$zc]=$Dmat[$zc][$za];}}
+    for $iperm (0..2**$Nz-1) {
+      $ip2=$iperm;
+      for $za (0..$Nz-1) {
+        $wt_z_this[$za] = $ip2&1;
+        $ip2>>=1;
+      }
+      $p=0;
+      for $za (0..$Nz-1) {
+        for $zb (0..$Nz-1) {
+          $p += $Dmat[$za][$zb]*$wt_z_this[$za]*$wt_z_this[$zb];
+        }
+      }
+      if ($p>$pmax) {$pmax = $p; @wt_z=@wt_z_this;}
+    }
+  }
+  if ($REWEIGHT_FLAG==1005) {
+    # If the weights are restricted to -1<w_i<1
+    # Then we can maximize p = w^T D w (subject to positive weights) by testing every corner
+    # where D_{ac} = sum_{bd} [ P_{ab} C^-1_{bc} P_{cd} C^-1_{da} + P_{ab} C^-1_{bd} P_{cd} C^-1_{ca} ]
+    #
+    $pmax=0;
+    @wt_z=();
+    for $za (0..$Nz-1) {
+      for $zc (0..$za) {
+        $Dmat[$za][$zc] = 0.;
+        for $zb (0..$Nz-1) {
+          for $zd (0..$Nz-1) {
+            $Dmat[$za][$zc] += $PowerNoNoise[$za][$zb] * $PowerNoNoise[$zc][$zd]
+                              * ($CtotInverse[$zb*$Nz+$zc] * $CtotInverse[$zd*$Nz+$za] + $CtotInverse[$zb*$Nz+$zd] * $CtotInverse[$zc*$Nz+$za]);
+          }
+        }
+      }
+    }
+    for $za (0..$Nz-1) { for ($zc=$za+1;$zc<$Nz;$zc++) {$Dmat[$za][$zc]=$Dmat[$zc][$za];}}
+    for $iperm (0..2**$Nz-1) {
+      $ip2=$iperm;
+      for $za (0..$Nz-1) {
+        $wt_z_this[$za] = $ip2&1? 1: -1;
+        $ip2>>=1;
+      }
+      $p=0;
+      for $za (0..$Nz-1) {
+        for $zb (0..$Nz-1) {
+          $p += $Dmat[$za][$zb]*$wt_z_this[$za]*$wt_z_this[$zb];
+        }
+      }
+      if ($p>$pmax) {$pmax = $p; @wt_z=@wt_z_this;}
+    }
+  }
+
+  # Figure out (S/N)^2 from Delta_gamma=1 in this bin
+  #
+  # This is (S/N)^2 = Nmodes/2 * Tr[C^-1 C_sp C^-1 C_sp]
+  #
+  # using C_sp = w w^T
+  # and Nmodes = (2l+1) fsky:
+  #
+  # (S/N)^2 = (2l+1)/2 * fsky * {w^T C^-1 w}^2
+  # here we set prod = w^T C^-1 w
+  #
+  if ($TYPE_CODE eq 'a') {
+    $prod = 0;
+    for $za (0..$Nz-1) {
+      for $zb (0..$Nz-1) {
+        $prod += $wt_z[$za]*$wt_z[$zb]*$CtotInverse[$za*$Nz+$zb];
+      }
+    }
+    $SN2 = (2*$l+1)/2. * $fsky * $prod**2;
+    # if ($l%50==0) {print (sprintf "%4d %11.5E %11.5E\n", $l, $SN2, $T[0][$l]);} # <-- Test output
+  }
+  #
+  # Same for multiplicative case
+  # want: prod = Delta C_{ab} C^{-1}_{bc} Delta C_{cd} C^{-1}_{da}
+  # Delta C_{ab} = (w_a+w_b) C_{ab}
+  if ($TYPE_CODE eq 'm') {
+    $prod = 0;
+    for $za (0..$Nz-1) {
+      for $zb (0..$Nz-1) {
+        for $zc (0..$Nz-1) {
+          for $zd (0..$Nz-1) {
+            $prod += ($wt_z[$za]+$wt_z[$zb]) * ($wt_z[$zc]+$wt_z[$zd]) * $PowerNoNoise[$za][$zb] * $PowerNoNoise[$zc][$zd]
+                     * $CtotInverse[$zb*$Nz+$zc] * $CtotInverse[$zd*$Nz+$za];
+          }
+        }
+      }
+    }
+    $SN2 = (2*$l+1)/2. * $fsky * $prod;
+  }
+
+  # Template summation -- weight by template for additive, use template as binary mask for multiplicative
+  for $itemp (0..$Ntemp-1) {
+    if ($TYPE_CODE eq 'a') {
+      $SN2Temp[$itemp] += $SN2 * $T[$itemp][$l]**2;
+    }
+    if ($TYPE_CODE eq 'm') {
+      $SN2Temp[$itemp] += $SN2 * ($T[$itemp][$l]>1e-98? 1: 0);
+    }
+  }
+
+  # print "$l [@wt_z]\n" if ($l%100==0); <-- TEST
+}
+
+print "\n";
+for $itemp (0..$Ntemp-1) {
+  if ($TYPE_CODE eq 'a') {
+    print (sprintf "%2d %11.5lE %11.5lE\n", $itemp, $SN2Temp[$itemp], $SN2Temp[$itemp]**(-0.25));
+  }
+  if ($TYPE_CODE eq 'm') {
+    print (sprintf "%2d %11.5lE %11.5lE\n", $itemp, $SN2Temp[$itemp], $SN2Temp[$itemp]**(-0.5));
+  }
+}

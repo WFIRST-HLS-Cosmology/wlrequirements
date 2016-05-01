@@ -1,0 +1,16 @@
+The cosmic shear measurement is sensitive to two major types of measurement errors. {\em Additive bias} or ``spurious shear'' is a shear signal that is detected even when none is present. {\em Multiplicative bias} or ``calibration bias'' is an incorrect response to a real shear, e.g.\ a shear $\gamma$ is present in the sky but the measurement yields 1.01$\gamma$. Normally, we think of additive biases as resulting from mis-estimation of the PSF ellipticity (or its variation across the sky), whereas multiplicative biases result from mis-estimation of the size of the PSF. However, detector nonlinearities, approximations used in the data processing/analysis pipelines, and uncertainties about the distribution of galaxy morphologies in the sky can also contribute to both types of biases. These biases produce an effect on the observed shear:
+\begin{equation}
+\gamma({\boldsymbol\theta},z;{\rm obs}) = [1+m(z)] \gamma({\boldsymbol\theta},z;{\rm true}) + c({\boldsymbol\theta},z),
+\label{eq:gmod}
+\end{equation}
+where $m$ is the multiplicative bias parameter (possibly redshift-dependent) and $c$ is the additive bias field. The $E$-mode shear cross-power spectrum (see Appendix~\ref{sec:Fourier-tensor}) between two redshift bins $z_i$ and $z_j$ is modified in the presence of these biases:
+\begin{equation}
+C_\ell^{z_i,z_j}({\rm obs}) = (1+m_i)(1+m_j)C_\ell^{z_i,z_j}({\rm true}) + C_\ell^{c_i,c_j},
+\label{eq:mod}
+\end{equation}
+where we write $m_i\equiv m(z_i)$ as a shorthand. To linear order in the biases, the correction to the power spectrum can be written as
+\begin{equation}
+\Delta C_\ell^{z_i,z_j} = C_\ell^{z_i,z_j}({\rm obs}) - C_\ell^{z_i,z_j}({\rm true}) = (m_i+m_j)C_\ell^{z_i,z_j}+C_\ell^{c_i,c_j}.
+\label{eq:Delta C}
+\end{equation}
+

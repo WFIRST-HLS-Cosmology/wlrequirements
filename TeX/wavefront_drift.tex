@@ -1,0 +1,106 @@
+The requirements on wavefront drift rate stem from the need to know the PSF in each exposure. If the PSF is determined based on data over some length of time $\Delta t$, with a static (time-independent, but spatially varying) aberration pattern fit to the data, then the ``best fit'' model will not be an accurate representation of the PSF over all epochs within the interval $\Delta t$.
+
+\subsection{Flowdown methodology}
+\label{ss:drift-method}
+
+In general, we suppose that there is a vector of parameters ${\bf p}$ that determines the PSF in each exposure (including its field dependence). Some of these are associated with the equilibrium wavefront -- this is the subject of this section -- whereas others are associated with image motion, jitter, detector properties, etc. The amplitudes $\psi_i({\boldsymbol\theta})$ of each Zernike component of the wavefront error -- which depend on field position ${\boldsymbol\theta}$ -- are functions of these parameters, and will each have their own time dependence $\psi_i({\boldsymbol\theta};t)$. This induces a time dependence in the PSF $G({\bf x};{\boldsymbol\theta};t)$, and hence in the observes shear $\gamma_{\rm obs}$ for an object.
+
+We may write the amplitudes $\psi_i$ at a given position as a vector ${\boldsymbol\psi}$ of length $N_{\rm Zern}$, where $N_{\rm Zern}$ is the number of Zernike coefficients kept. We normalize the Zernike modes to unit RMS, so that $|{\boldsymbol\psi}({\boldsymbol\theta})|$ is the RMS wavefront error at position ${\boldsymbol\theta}$. That is, we write the wavefront error at pupil position ${\boldsymbol\eta}$ and field position ${\boldsymbol\theta}$ as
+\begin{equation}
+\psi({\boldsymbol\eta};{\boldsymbol\theta}) = \sum_{n=2}^\infty \sum_{m} \sqrt{n+1}\,\psi_{nm}({\boldsymbol\theta}) R_n^m(\rho) \times\left\{\begin{array}{ccc} 1 & & m=0 \\ \sqrt2\,\cos m\varphi & & m>0 \\ \sqrt2\,\sin m\varphi & & m<0 \end{array} \right.,
+\end{equation}
+where $\rho$ is the radius of the pupil position normalized to 1 at the edge, and $\varphi$ is the polar angle in the pupil plane, $m$ is summed over integers with the same parity as $n$ (both odd or both even) and $|m|\le n$ (so that there are $n+1$ terms in the $m$-sum), and $R_n^m$ is the Zernike polynomial with normalization $R_n^m(1)=1$. The factor of $\sqrt{n+1}$ and (sometimes) $\sqrt2$ guarantee the unit normalization of the RMS over the unit disc.
+
+If the wavefront is drifting over time, then to first order in the drift rate we may write
+\begin{equation}
+\psi_i({\boldsymbol\theta};t) = \psi_i({\boldsymbol\theta};t_0) + \dot\psi_i({\boldsymbol\theta}) (t-t_0),
+\end{equation}
+where $t_0$ is the central epoch chosen and $-\frac12\Delta t < t-t_0 < \frac12\Delta t$. Again to linear order in $t-t_0$, the PSF that is determined by a least-squares fit with uniform weighting in time will have an expectation value that is $G({\bf x};{\boldsymbol\theta};t_0)$. There is then a corresponding error in the shear in a given redshift bin $z_k$:
+\begin{equation}
+c_{k,i}(t) = \sum_j \frac{\partial \gamma_{{\rm obs},i}(z_k)}{\partial\psi_j} \dot\psi_j({\boldsymbol\theta}) (t-t_0),
+\end{equation}
+where in this equation $k$ denotes a redshift bin and $i$ denotes a component. Taking just the most strongly affected (in the sense of $|c|$) redshift bin to start as the reference, we see that
+\begin{equation}
+|c_{\rm ref}(t)| \le \left\lVert \frac{\partial \gamma_{{\rm obs,ref},i}}{\partial\psi_j} \right\rVert |\dot{\boldsymbol\psi}({\boldsymbol\theta})| |t-t_0|,
+\end{equation}
+where $\lVert~\rVert$ denotes an operator norm (i.e.\ the maximum singular value of the $2\times N_{\rm Zern}$ matrix). The variance of $c$ {\em per component} (i.e.\ divided by 2) is
+\begin{equation}
+A^2 \equiv \frac12\langle |c_{\rm ref}|^2 \rangle \le \frac12 \left[ \left\lVert \frac{\partial \gamma_{{\rm obs,ref},i}}{\partial\psi_j} \right\rVert |\dot{\boldsymbol\psi}({\boldsymbol\theta})| \right]^2 \langle(t-t_0)^2\rangle;
+\end{equation}
+the last expectation value is $\frac1{12}\Delta t^2$ with the average taken over a uniform interval, leading to
+\begin{equation}
+A \le \frac1{\sqrt{24}} \left\lVert \frac{\partial \gamma_{{\rm obs,ref},i}}{\partial\psi_j} \right\rVert |\dot{\boldsymbol\psi}({\boldsymbol\theta})| \Delta t.
+\label{eq:ADt}
+\end{equation}
+Thus from a requirement on $A$, a determination of the matrix $\partial \gamma_{{\rm obs,ref},i}/\partial\psi_j$, and an interval of time $\Delta t$, we can set a requirement on the wavefront drift rate $|\dot{\boldsymbol\psi}|$. The matrix $\partial \gamma_{{\rm obs,ref},i}/\partial\psi_j$ depends on the static aberration pattern and its determination is described below. The interval $\Delta t$ for PSF fitting is a free parameter, and the wavefront drift rate requirement is tighter if $\Delta t$ is increased. This must be traded against the {\em statistical} error in the PSF solution, where the target precision is easier to achieve if the time baseline $\Delta t$ used in fitting the model is increased.
+
+\subsection{Sensitivity matrix}
+\label{ss:drift-sens}
+
+From Eq.~(\ref{eq:ADt}), we see that a key step is to compute the sensitivity matrix $\partial \gamma_{{\rm obs,ref},i}/\partial\psi_j$. Unfortunately, this matrix depends on the specific combination of static wavefront errors, because ${\boldsymbol\gamma}_{\rm obs,ref}$ is not a linear function of ${\boldsymbol\psi}$. Indeed, due to symmetries the possible form of ${\boldsymbol\gamma}_{\rm obs,ref}$ is restricted, with the result that $\partial \gamma_{{\rm obs,ref},i}/\partial\psi_j$ may be suppressed at zero wavefront error (${\boldsymbol\psi}=0$) and be much larger in the realistic case where ${\boldsymbol\psi}\neq 0$ \citep[e.g.][]{2010SPIE.7731E..37N}. Therefore we must search the entire space of possible wavefront errors ${\boldsymbol\psi}$ -- bounded by the top-level requirement that $|{\boldsymbol\psi}|<90\,$nm -- to find the place where the operator norm is maximized.
+
+The requirement that the PSF inverts (i.e.\ preserves ellipticity and hence spurious shear) under ${\boldsymbol\psi}\rightarrow-{\boldsymbol\psi}$ implies that ${\boldsymbol\gamma}_{\rm obs,ref}$ is an even function of ${\boldsymbol\psi}$ (this statement remains true even for an asymmetric pupil, due e.g.\ to the spider). For a circularly symmetric pupil, we find the further restrictions that
+\begin{eqnarray}
+\gamma_{\rm obs,ref\,1} &=& C_{fa} \psi_{20} \psi_{22} + C_{sa} \psi_{40} \psi_{22}
++ C_{cc} (\psi_{31}^2-\psi_{3-1}^2) + C_{ct} (\psi_{31}\psi_{33} + \psi_{3-1}\psi_{3-3})
++ ...~{\rm and}
+\nonumber \\
+\gamma_{\rm obs,ref\,2} &=& C_{fa} \psi_{20} \psi_{2-2} + C_{sa} \psi_{40} \psi_{2-2}
++ 2C_{cc} \psi_{31} \psi_{3-1} + C_{ct} (\psi_{31}\psi_{3-3} - \psi_{3-1}\psi_{33})
++ ...\,,
+\end{eqnarray}
+where we have taken the lowest-order aberrations (focus, astigmatism, coma, trefoil, and spherical) as these dominate the wavefront stability budget. With the wavefront error vector written in this order, ${\boldsymbol\psi} = (\psi_{20}; \psi_{22},\psi_{2-2}; \psi_{31},\psi_{3-1}; \psi_{33},\psi_{3-3}; \psi_{40})$, we find a sensitivity matrix
+\begin{equation}
+{\bf M}^{\rm T} = \left[ \frac{\partial \gamma_{{\rm obs,ref},i}}{\partial\psi_j} \right]^{\rm T}
+= \left( \begin{array}{cc}
+C_{fa}\psi_{22}  & C_{fa}\psi_{2-2} \\
+C_{fa}\psi_{20}+C_{sa}\psi_{40} & 0 \\
+0 & C_{fa}\psi_{20}+C_{sa}\psi_{40} \\
+2C_{cc}\psi_{31}+C_{ct}\psi_{33} & 2C_{cc}\psi_{3-1}+C_{ct}\psi_{3-3} \\
+-2C_{cc}\psi_{3-1}+C_{ct}\psi_{3-3} & 2C_{cc}\psi_{31}-C_{ct}\psi_{33} \\
+C_{ct}\psi_{31} & -C_{ct}\psi_{3-1} \\
+C_{ct}\psi_{3-1} & C_{ct}\psi_{31} \\
+C_{sa}\psi_{22} & C_{sa}\psi_{2-2}
+\end{array} \right)
+\label{eq:TheMatrix}
+\end{equation}
+(we show the transpose here for ease of display; the operator norm is the same).
+
+We want a limit on the maximum singular value of Eq.~(\ref{eq:TheMatrix}), subject to a limit on $|{\boldsymbol\psi}|$. To do so, let us first consider writing the singular value decomposition ${\bf M} = {\bf UDV}^{\rm T}$, where ${\bf U}$ is a $2\times 2$ orthogonal matrix, ${\bf D}$ has 2 diagonal non-negative entries in non-increasing order ($D_{11}\ge D_{22}$) and is otherwise zeroes (and has dimension $2\times N_{\rm Zern}$), and ${\bf V}$ is $N_{\rm Zern}\times N_{\rm Zern}$. Here ${\bf U}$ is simply a rotation of the shear derivative, and due to circular symmetry can be set to the identity by rotating the entire aberration pattern. Thus without loss of generality we can consider cases where ${\bf U}$ is the identity, and then
+\begin{equation}
+\lVert{\bf M} \rVert = \sqrt{ \sum_j \left(\frac{\partial \gamma_{{\rm obs,ref},1}}{\partial\psi_j} \right)^2 }
+= \sqrt{ {\boldsymbol\psi}^{\rm T} {\boldsymbol\Lambda}{\boldsymbol\psi} }
+\le \lVert{\boldsymbol\Lambda} \rVert |{\boldsymbol\psi}|,
+\end{equation}
+where we used the fact that ${\bf M}$ is a linear function of ${\boldsymbol\psi}$ and defined the matrix ${\boldsymbol\Lambda}$ to be the matrix of derivatives of the first row of ${\bf M}$:
+\begin{equation}
+{\boldsymbol\Lambda} = \left( \begin{array}{cccccccc}
+0 & C_{fa} & 0 & 0 & 0 & 0 & 0 & 0 \\
+C_{fa} & 0 & 0 & 0 & 0 & 0 & 0 & C_{sa} \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 2C_{cc} & 0 & C_{ct} & 0 & 0 \\
+0 & 0 & 0 & 0 & -2C_{cc} & 0 & C_{ct} & 0 \\
+0 & 0 & 0 & C_{ct} & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & C_{ct} & 0 & 0 & 0 \\
+0 & C_{sa} & 0 & 0 & 0 & 0 & 0 & 0
+\end{array} \right),
+\end{equation}
+which has norm
+\begin{equation}
+\lVert {\boldsymbol\Lambda} \rVert = \max \left\{
+\sqrt{C_{fa}^2 + C_{sa}^2}, ~|C_{cc}|+\sqrt{C_{cc}^2+C_{ct}^2}
+\right\}.
+\label{eq:LambdaNorm}
+\end{equation}
+(There are both even-aberration and odd-aberration sectors of this matrix; the operator norm is determined by whichever has greater leverage on the spurious shear. In most cases, the even sector -- the first term -- is dominant.)
+
+We are not quite done because we have not specified the redshift or scale dependence of this systematic. Since $C_{fa}$ is usually dominant, we adopt its redshift dependence to determine the weights $w(z_i)$, with the last bin as the reference bin because it is the most heavily contaminated -- the galaxies are smallest in that bin and the $C$-coefficients are largest. However, the weights $w(z_i)$ obtained from $C_{ct}$ (the next largest coefficient) are only slightly different. \CMH{Give percentage?}
+
+Using model P1 for the PSF and G1 for the shear determination, the greatest contamination is in the $J$-band, where $\lVert{\boldsymbol\Lambda}\rVert = 1.25\times 10^{-5}\,$nm$^{-2}$. With a limit on the total wavefront error of $|{\boldsymbol\psi}({\boldsymbol\theta})|<90\,$nm, we find
+\begin{equation}
+A \le \frac1{\sqrt{24}}\lVert{\boldsymbol\Lambda} \rVert |{\boldsymbol\psi}| |\dot{\boldsymbol\psi}({\boldsymbol\theta})| \Delta t
+= 2.3\times 10^{-4}\, {\rm nm}^{-1}\times |\dot{\boldsymbol\psi}({\boldsymbol\theta})| \Delta t.
+\end{equation}
+
+\CMH{Will want to finish this, including figuring out the angular scale dependence. Current requirement that we have worked to is $\Delta t$ = 1 exposure (184 s) and $|\dot{\boldsymbol\psi}({\boldsymbol\theta})| \Delta t<0.707\,$nm, which produces a spurious shear of $1.6\times 10^{-4}$, RMS per component. This is getting very tight as compared to the requirements in Table~\ref{tab:addbands}. A mitigating factor is the redshift dependence from the P1+G1 model: the redshift weights $w(z_i)$, plugged into the machinery from \S\ref{ss:implement-add}, give $S[{\bf w},\alpha]$ ranging from 0.31--0.48.}
+

@@ -1,0 +1,25 @@
+Here we summarize the conventions on time series that are used in the main text.
+
+Fourier transforms in the time domain are written using the ``$2\pi$ in the exponent'' convention:
+\begin{equation}
+A(t) = \int_{-\infty}^\infty A(f) \,e^{-2\pi i f t}\,df
+~~~~\leftrightarrow~~~~
+A(f) = \int_{-\infty}^\infty A(t) \,e^{2\pi i f t}\,dt.
+\end{equation}
+[{\bfseries Warning}: for {\em spatial} Fourier transforms, we use the ``$2\pi$ under the wavenumber'' convention; this follows standard practice in cosmology; see Appendix~\ref{sec:Fourier-tensor}.]
+If $A$ is a real function then $A(f) = A^\ast(-f)$. If $A(t)$ and $B(t)$ describe stationary random processes, their power spectrum is
+\begin{equation}
+P_{AB}(f) \delta(f-f') = \langle A(f) B^\ast(f') \rangle,
+\end{equation}
+with units of [units of $AB$]/Hz. Note that $P_{AB}(f) = P^\ast_{BA}(f)$, with the phase of the power spectrum denoting which variable is leading and which is trailing; the correlation function is
+\begin{eqnarray}
+\langle A(t) B(t+\tau) \rangle &=& \int_{-\infty}^\infty P_{AB}(f) e^{2\pi i f \tau}\,df
+\nonumber \\
+&=& 2\int_0^\infty \left\{ [\Re P_{AB}(f)] \cos(2\pi f\tau) - \int_0^\infty [\Im P_{AB}(f)] \sin(2\pi f\tau) \right\}df.
+\end{eqnarray}
+The equal-time covariance is
+\begin{equation}
+C_{AB} = \int_{-\infty}^\infty P_{AB}(f)\,df = 2\int_0^\infty \Re P_{AB}(f)\,df.
+\end{equation}
+The variance of any variable $A$ is $2\int_0^\infty P_{AA}(f)\,df$, with the factor of 2 coming from the existence of positive and negative frequencies. Therefore when plotting the power spectrum of a process we will usually show $2P_A(f)$, so that the integral over $0<f<\infty$ is the variance.
+

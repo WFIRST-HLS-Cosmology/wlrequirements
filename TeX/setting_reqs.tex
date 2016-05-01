@@ -1,0 +1,110 @@
+We arrange the power spectra are arranged into a vector ${\bf C}$ with a covariance matrix ${\bf\Sigma}$. For the WL power spectrum, with $N_z$ redshift bins and $N_\ell$ angular scale bins, there are $N_\ell N_z(N_z+1)/2$ power spectra $C_\ell^{z_i,z_j}$; hence ${\bf C}$ is a vector of length $N_\ell N_z(N_z+1)/2$, and ${\bf\Sigma}$ is a matrix of size $N_\ell N_z(N_z+1)/2 \times N_\ell N_z(N_z+1)/2$. A contaminant that changes the power spectrum by $\Delta {\bf C}$ can have its significance assessed by
+\begin{equation}
+Z = \sqrt{\Delta{\bf C}\cdot{\bf\Sigma}^{-1}\Delta{\bf C}},
+\label{eq:alpha}
+\end{equation}
+which is the number of sigmas at which one could distinguish the correct power spectrum from the contaminated power spectrum. Note that as the survey area $\Omega$ is increased, $Z$ will increase as $\propto\Omega^{1/2}$, and hence contaminants $\Delta{\bf C}$ must be reduced to keep them below statistical errors. If $Z=1$, then the power spectrum is biased at the same level as the statistical errors. We use $Z$ as a metric for contaminants, rather than e.g. biases in $(w_0,w_a)$-space, for generality: if $Z<1$ then the bias due to $\Delta{\bf C}$ in {\em any} cosmological parameter from the combination of the WFIRST WL power spectrum with {\em any} other data set(s) from WFIRST or other experiments is $<1\sigma$; whereas if one based the analysis on biases in $(w_0,w_a)$ then we would need a separate requirement derived from every cosmological analysis planned on WFIRST WL data. Using $Z$ as a metric also enables us to write requirements that do not depend on other cosmological probes (e.g.\ the WFIRST WL systematic error budget does not change if we discover a new way to reduce the scatter in the SN Ia Hubble diagram), which will help to ensure the stability of our requirements going forward.
+
+Technically the above discussion applies only to the $E$-mode of spurious shear; we have not set a specific requirement on the $B$-mode, which contains no cosmological information to linear order and is used as a null test. For the latter reason, we set a requirement on the $B$-mode that is equal to the requirement on the $E$-mode, so that the $B$-mode null test will pass if requirements are met. We also note that the WL analysis includes a range of angular scales, $\ell_{\rm min,tot}\le \ell \le \ell_{\rm max,tot}$; requirements apply to sources of systematic error that affect these scales, i.e.\ are ``in-band'' for the WL measurement. The ``in-band'' qualifier is critical: as an example, pixelization errors can cause shape measurement errors in galaxies that depend on whether the galaxy lands on a pixel center, corner, vertical edge, or horizontal edge. For some shape measurement methods, this error may dramatically exceed the additive systematic error budget, but it is concentrated at very small angular scales (multiples of $2\pi$ divided by the pixel scale $P$, or $2\pi/P = 1.2\times 10^7$). Our requirements are set on the portion of this power that is within (or mixes into) the band limit, $\ell\le\ell_{\rm max,tot}$ due to e.g.\ edge effects, selection effects, etc.
+
+Equation~(\ref{eq:alpha}) still does not completely define a requirement, since we have not described the redshift or scale dependence of the spurious shear in question. Neither dependence is expected to be trivial: errors in PSF models have a greater impact on shape measurements for higher redshift galaxies, since they tend to be smaller; and the angular power spectrum of PSF model errors should be non-white in a survey strategy that ``marches'' across the sky, even if heavily cross-linked (there may also be a characteristic scale at the size of the field; for example, a repeating error at the $\sim 0.8\times0.4^\circ$ size of the WFIRST field has reciprocal lattice frequencies at $\ell = 450$ and 900, so a large scale error in the instrument PSF model that is ``tessellated'' as we tile the sky will appear at these frequencies or multiples thereof). At first, we considered assuming a particular scale and redshift dependence for the errors, but in order to be conservative we would have to assume the worst combination of angular and redshift dependences. Many of our large sources of systematic error, such as PSF ellipticity due to astigmatism, have predictable dependences (e.g.\ the systematic error induced in galaxy shears is of the same sign in all redshift bins) that are far from the worst case, and this could lead to over-conservatism in the requirements. Therefore we need a more nuanced approach to the requirements, where the allowed amplitude of each term in the error budget is informed by the structure of the correlations it produces.
+
+Our approach to this problem is to write a script that accepts a specific angular and redshift dependence (``template'') for a systematic error, and returns the amplitude $A_0$ of the systematic error at which we would have $Z=1$ (i.e.\ a $1\sigma$ bias on the most-contaminated direction in power spectrum space). For cases where the template is not known (or where we have not done the analysis), the script is capable of searching the space of templates and finding the most conservative choice, i.e.\ the choice that leads to the smallest value of $A_0$. The combined results enable us to build an error tree, where the overall top-level systematics requirement (a limit on $Z$) can be flowed down to upper limits on each source of systematic error. Finally, some portions of the systematic error budget sum in quadrature (``root-sum-square'' or RSS addition) and others linearly; in this document, we carefully account for which is which.
+
+\subsubsection{Data vector and covariance model}
+
+We use for our data vector the $N_\ell N_z(N_z+1)/2$ power spectra and cross-spectra. Each $\ell$ is treated separately, so there are $N_\ell=\ell_{\rm max,tot}-\ell_{\rm min,tot}$ angular bins; we use $\ell_{\rm min,tot}=10$ and $\ell_{\rm max,tot}=3161$, thereby covering 2.5 orders of magnitude in scale. WFIRST provides little cosmological constraining power at the larger scales due both to the finite size of its survey and due to the large cosmic variance of the lowest multipoles. The smallest scales are generally not used in cosmic shear analyses because the baryonic effects are severe (e.g.\ \citealt{2008PhRvD..77d3507Z, 2013PhRvD..87d3509Z}). We use $N_z=15$ redshift slices, as shown in Table~\ref{tab:dNdz}. In order to ensure that WFIRST would not become systematics-limited in an extended mission, we set the top-level requirement on systematics to $Z=1$ for a survey of area $\Omega =10^4$ deg$^2$ (3.05 sr).
+
+\CMH{Need to update number densities with the latest forecasts.}
+
+The power spectra were obtained from {\sc Class} \citep{2011JCAP...07..034B} using the fiducial cosmology from the {\slshape Planck} 2015 ``TT,TE,EE+lowP+lensing+ext'' results \citep{2015arXiv150201589P}. The shape noise contribution was added to construct ${\bf C}^{\rm tot}$ according to
+\begin{equation}
+C^{{\rm tot},z_i,z_j}_\ell = C^{z_i,z_j}_\ell + \frac{\gamma_{\rm rms}^2}{\bar n_i}\delta_{ij},
+\end{equation}
+where $\bar n_i$ is the mean effective number density in galaxies per steradian in redshift slice $i$, and $\gamma_{\rm rms}$ is the shape noise expressed as an equivalent RMS shear per component; we take $\gamma_{\rm rms} = 0.22$.
+
+We approximate ${\boldsymbol\Sigma}$ using the usual Gaussian covariance matrix formula,
+\begin{equation}
+\Sigma[C^{z_i,z_j}_\ell, C^{z_k,z_m}_{\ell'}] = \frac{1}{(2\ell+1)f_{\rm sky}} \delta_{\ell\ell'} [ C^{{\rm tot},z_i,z_k}_\ell C^{{\rm tot},z_j,z_m}_\ell + C^{{\rm tot},z_i,z_m}_\ell C^{{\rm tot},z_j,z_k}_\ell],
+\label{eq:SGauss}
+\end{equation}
+where $f_{\rm sky} = \Omega/(4\pi)$.
+The non-Gaussian contributions to the error covariance matrix are turned off, because since the FoMSWG \citep{2009arXiv0901.0721A} there has been an ongoing program of using nonlinear transformations on the data to remove them \citep[e.g.][]{2009ApJ...698L..90N, 2011ApJ...729L..11S} and we do not want applications of these novel statistics to WFIRST data to run into systematic error limits. We also turn off astrophysical systematic errors (e.g.\ intrinsic alignments and baryonic corrections): we do not want to define a weak requirement on WFIRST based on the expectation that astrophysical systematics will be large enough to swamp the observational contribution.
+
+The formal length of the data vector ${\bf C}$ is 378240. However, the inversion of Eq.~(\ref{eq:SGauss}) is accelerated by two realizations: first, that each $\ell$ is independent, so that ${\boldsymbol\Sigma}$ is block-diagonal and the contributions of each $\ell$ to $Z^2$ can be linearly summed. Secondly, the particular form of Eq.~(\ref{eq:SGauss}) allows us to write\footnote{This equation is trivially verified by forming, for each $\ell$, linear combinations of the redshift slices that diagonalize ${\bf C}^{\rm tot}_\ell$.}
+\begin{equation}
+\Delta{\bf C} \cdot {\boldsymbol\Sigma}^{-1} \Delta {\bf C}
+ = \sum_\ell \frac{(2\ell+1)f_{\rm sky}}2 \sum_{ijkm}
+ \Delta C_\ell^{ij} [C^{{\rm tot}-1}_\ell]_{jk}
+ \Delta C_\ell^{km} [C^{{\rm tot}-1}_\ell]_{mi},
+\label{eq:sprodform}
+\end{equation}
+where the matrix inverses are $N_z\times N_z$.
+
+\begin{deluxetable}{cc|cc|cc}
+\tablecolumns 6
+\tablecaption{The effective number density in each redshift bin, in units of galaxies/arcmin$^{2}$, used for setting requirements. These are {\em per bin}, i.e.\ are $dn_{\rm eff}/dz\times\Delta z$. 
+\label{tab:dNdz}}
+\tablehead{
+$z$ & $n_{\rm eff}$ & $z$ & $n_{\rm eff}$ & $z$ & $n_{\rm eff}$
+}
+\startdata
+% Read table from external file
+\input{tab_dNdz.tex}
+\enddata
+\end{deluxetable}
+
+\subsubsection{Implementation: additive systematics}
+\label{ss:implement-add}
+
+\begin{deluxetable}{r|rrc|c|rr}
+\tablecolumns 7
+\tablecaption{The bands used for the additive systematic errors. There are $N_{\rm band}=5$ bands ranging over a total signal band from $\ell_{\rm min,tot}=10$ to $\ell_{\rm max,tot}=3161$. The fraction of the error budget allocated to each band is also indicated, as are the maximum allowed redshift-independent spurious shear ($A_0^{\rm flat}(\alpha)$, RMS per component), and the maximum scaling factors for redshift dependence, $S_{\rm max,\pm}(\alpha)$ and $S_{\rm max,+}(\alpha)$.
+\label{tab:addbands}}
+\tablehead{
+Band number, $\alpha$ & $\ell_{\rm min}(\alpha)$ & $\ell_{\rm max}(\alpha)$ & Allocation $Z(\alpha)$ & $A_0^{\rm flat}(\alpha)$ & $S_{\rm max,\pm}(\alpha)$ & $S_{\rm max,+}(\alpha)$
+}
+\startdata
+% Can generate this using the MAKETAB_addbands script
+\input{tab_addbands.tex}
+\enddata
+\end{deluxetable}
+
+Each additive systematic error is taken to have an angular dependence given by some template $T_\ell$, and a redshift dependence given by a set of weights $w_i=w(z_i)$. That is, there is a reference additive shear $c_{\rm ref}$, with the additive shear in redshift bin $i$ given by $c(z_i) = w_ic_{\rm ref}$. For example, a systematic error independent of redshift bin would be specified with $w_i=1$ for all $i$. The reference signal is taken to have a power spectrum proportional to the template: $C_\ell^{c_{\rm ref}} = A_0^2T_\ell$, and the template is normalized so that $c_{\rm ref}$ has variance 1 per component (from in-band fluctuations):
+\begin{equation}
+\sum_{\ell=\ell_{\rm min,tot}}^{\ell_{\rm max,tot}} \frac{2\ell+1}{4\pi} T_\ell = 1.
+\label{eq:Tlsum}
+\end{equation}
+The additive cross-power spectrum is then
+\begin{equation}
+C_\ell^{c_i,c_j} = A_0^2 w_iw_jT_\ell,
+\end{equation}
+and the total RMS per component of the spurious shear in bin $i$ is $A_0|w_i|$.
+
+The additive systematic errors can have various scale dependences. We therefore consider a suite of $N_{\rm band}$ disjoint angular templates that cover the shape measurement band. Each template satisfies the normalization rule, Eq.~(\ref{eq:Tlsum}), and has $\ell(\ell+1)T_\ell/(2\pi)=$constant:
+\begin{equation}
+T_\ell^{(\alpha)} = \left[ \sum_{\ell'=\ell_{\rm min}(\alpha)}^{\ell_{\rm max}(\alpha)} \frac{2\ell'+1}{\ell'(\ell'+1)} \right]^{-1} \frac{4\pi}{\ell(\ell+1)}
+\times\left\{ \begin{array}{cc} 1 & \ell_{\rm min}(\alpha)\le\ell\le\ell_{\rm max}(\alpha) \\ 0 & {\rm otherwise} \end{array} \right.\!,~\alpha=0,1,...N_{\rm band}-1.
+\end{equation}
+The current bands are displayed in Table~\ref{tab:addbands}. Each band $\alpha$ is allowed a contribution to the total error $Z(\alpha)$. Since there are no statistical correlations between different $\ell$s in the covariance matrix ${\bf\Sigma}$, the $Z(\alpha)$ can be quadrature-summed (see Eq.~\ref{eq:alpha}). However, additive systematic error is positive in the sense that it adds rather than subtracts power; thus the power spectrum error vectors $\Delta{\bf C}$ from two sources of additive systematic error contributing to the same angular bin are not orthogonal and the $Z$'s should be added linearly. Another way to think of this is that since $Z$ is proportional to the square of the RMS shear, $Z\propto A_0^2$, quadrature-summation of the additive shear is equivalent to linear summation of the $Z$-values.
+
+The allocations for each bin $Z(\alpha)$ have been set to $\sqrt{0.25/N_{\rm band}}$, so that in an RSS sense 25\%\ of the systematic error budget is allocated to additive shear. \CMH{Is this what we want?}
+
+The construction of $Z$-values for each angular band and each additive systematic is mathematically sufficient to build the error budget. However, they can be difficult to conceptualize. Therefore, we introduce some equivalent notation to describe the WL error budget. For each angular template, we introduce a limiting amplitude $A_0^{\rm flat}(\alpha)$, defined to be the amplitude $A_0$ at which we would saturate the requirement on $Z(\alpha)$ for bin $\alpha$ in the case of a redshift-independent systematic $w_i=1\,\forall i$. That is, if the additive systematics did not depend on redshift, we could tolerate a total additive systematic shear of $A_0^{\rm flat}$ (RMS per component) in band $\alpha$. We also introduce a scaling factor $S[{\bf w},\alpha]$ for a systematic error
+\begin{equation}
+S[{\bf w},\alpha] = \frac{Z(\alpha) \,{\rm for\,this\,}w_i}{Z(\alpha)\,{\rm for\,all\,}w_i=1}
+\end{equation}
+that depends on the redshift dependence $w_i$. An additive systematic error that is independent of redshift will have $S=1$. A systematic that is ``made worse'' by its redshift dependence will have $S>1$, and a systematic that is ``made less serious'' by its redshift dependence will have $S<1$. The requirement that the (linear) sum of $Z$s not exceed $Z(\alpha)$ thus translates into
+\begin{equation}
+\sum_{\rm systematics} [A(\alpha)]^2\times S[{\bf w},\alpha] \le [A_0^{\rm flat}(\alpha)]^2,
+\label{eq:A-S-sum}
+\end{equation}
+where $A(\alpha)$ is the RMS additive shear per component due to that systematic.
+
+In most cases, we will take the ``reference'' additive shear to be the additive shear in the most contaminated redshift slice; in this case, $w_i=1$ for that slice, and $|w_i|\le 1$ for the others. Under such circumstances, we can determine a {\em worst-case scaling factor} $S_{\rm max,\pm}(\alpha)$, which is the largest value of $S[{\bf w},\alpha]$ for any weights satisfying the above inequality. We may also determine a worst-case scaling factor $S_{\rm max,+}(\alpha)$ conditioned on $0\le w_i\le 1$, i.e.\ for sources of additive shear that have the same sign in all redshift bins. The search within these spaces is simplified by the fact that -- according to Eq.~(\ref{eq:sprodform}) -- the contribution to $S[{\bf w},\alpha]$ considering only a single value of $\ell$ reduces to a semi-positive-definite quadratic function of $w$. Therefore the worst-case weights $\{w_i\}_{i=1}^{N_z}$ always occur at the corners of the allowed cube in $N_z$-dimensional ${\bf w}$-space, and we can simply search the $2^{N_z}$ corners by brute force.
+
+\subsubsection{Implementation: multiplicative systematics}
+\label{ss:implement-mult}
+
+\CMH{Fill in this section!}
+

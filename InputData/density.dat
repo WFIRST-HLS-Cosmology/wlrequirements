@@ -1,0 +1,22 @@
+# Properties of the galaxy distribution
+#
+# First row: Nz, gamma_rms
+# Following rows: z, dz/2 (half-width), n_eff (gal/arcmin^2 in this bin)
+# (these should be space-delimited)
+#
+15 0.22
+0.10 0.10  4.01
+0.30 0.10  2.76
+0.50 0.10  3.78
+0.70 0.10  7.16
+0.90 0.10  3.62
+1.10 0.10  4.83
+1.30 0.10  3.99
+1.50 0.10  3.36
+1.70 0.10  1.88
+1.90 0.10  2.24
+2.10 0.10  1.64
+2.30 0.10  1.21
+2.50 0.10  1.10
+2.70 0.10  0.93
+2.90 0.10  0.29

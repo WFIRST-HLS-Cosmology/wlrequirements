@@ -1,0 +1,73 @@
+#!/usr/bin/perl
+
+# Re-run CLASS?
+$RERUN_FLAG = 0;
+
+# Number of templates
+$script = q{sed -n '/^[^\#]/p'}; # Strip comments
+@templatedata = split "\n", `$script InputData/Bands.txt`;
+$Ntemp = scalar @templatedata;
+
+# Filter table:
+# (edges in microns)
+open(IN, 'InputData/Filters.txt') or die "Can't open filters file\n";
+$i=0;
+while ($line=<IN>) {
+  if ($line !~ m/^\#/) {
+    # Un-commented lines in filter table
+    ($filters[$i]) = split ' ', $line;
+    $i++;
+  }
+}
+close IN;
+
+# Test
+# print "$Ntemp; @filters\n"; die;
+
+# Aberration list
+$offset = 5;    # Number of columns to skip in table of sensitivities
+@abers = ('fa', 'cc', 'ct', 'sa', 'jj', 'IPCap');
+
+# A0 for each template, for redshift-independent weights
+@data_w1 = split "\n", `./RUN_A0 2 $RERUN_FLAG a sens.temp | tail -n $Ntemp`;
+$RERUN_FLAG=0;
+for $itemp (0..$Ntemp-1) {
+  $A0ref[$itemp] = (split ' ', $data_w1[$itemp])[2];
+}
+
+for $filter (@filters) {
+  for $ia (0..(-1+scalar @abers)) {
+
+    # Get sensitivities
+    @lines = split "\n", `cat PSF_P1G1/coefficients_gal_$filter.dat`;
+    $Nz = scalar @lines;
+    $maxsens = 0;
+    for $iz (0..$Nz-1) {
+      @data = split ' ', $lines[$iz];
+      $sens[$iz] = $data[$offset+$ia];
+      if (abs($sens[$iz])>$maxsens) {$maxsens = abs($sens[$iz]);}
+    }
+    open(OUT, '>sens.temp');
+    for $iz (0..$Nz-1) {
+      print OUT (sprintf "%10.7f\n", $sens[$iz]/$maxsens);
+    }
+    close OUT;
+
+    # Now run additive systematics code to determine the requirement on this
+    # type of PSF error
+    #
+    print "\n--- Filter=$filter Aberration=$abers[$ia] ---\n";
+    print (sprintf "coefficient of spurious shear = %11.5E\n", $maxsens);
+    @data = split "\n", `./RUN_A0 7 $RERUN_FLAG a sens.temp | tail -n $Ntemp`;
+    for $itemp (0..$Ntemp-1) {
+      $A0[$itemp] = (split ' ', $data[$itemp])[2];
+    }
+    for $itemp (0..$Ntemp-1) {
+      print "$data[$itemp]";
+      print (sprintf " %6.4f", ($A0[$itemp]/$A0ref[$itemp])**(-2));
+      print "\n";
+    }
+    $RERUN_FLAG = 0;
+
+  }
+}

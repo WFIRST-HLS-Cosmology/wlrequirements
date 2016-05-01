@@ -1,0 +1,36 @@
+We denote the PSF by $G({\bf x};{\boldsymbol\theta};t)$, where ${\bf x}$ is measured in pixels, and represents the 2D position vector at which the image intensity is measured relative to the image centroid; ${\boldsymbol\theta}$ represents field position (including the SCA number, 1 through 18); and $t$ represents time. In cases where a single exposure and a small portion of the field (e.g.\ the image of a single star or galaxy) are considered, we may write the PSF as $G({\bf x})$ for shorthand. The galaxy images will be denoted as $f({\bf x})$, and the observed image of a galaxy is
+\begin{equation}
+I({\bf x}) = \int f({\bf y}) G({\bf x}-{\bf y})\,d^2{\bf y} \equiv [f\star G]({\bf x}),
+\end{equation}
+where $\star$ denotes a convolution. For the purposes of this paper, we include in the PSF not just the optics, but the image motion (in-band and jitter), charge diffusion, and pixelization (a top-hat in an ideal detector). Other effects may be included in the PSF if this is appropriate, or treated separately. \CMH{Make table of how each effect is included, and then we can add to that?}
+
+We parameterize the size and shape of any image $I({\bf x})$ (e.g. a galaxy or star) using its adaptive moments, following \citet{2002AJ....123..583B}. A given image has 5 adaptive moments described by a centroid $\bar{\bf x}$ and a $2\times 2$ symmetric second moment matrix ${\bf M}$ that minimizes the functional
+\begin{equation}
+{\cal E} = \int \left[ I({\bf x}) - A \exp \frac{-({\bf x}-\bar{\bf x})\cdot{\bf M}^{-1}({\bf x}-\bar{\bf x})}2 \right]^2 \,d^2{\bf x}
+\label{eq:E}
+\end{equation}
+over the 6 parameters $\{A,\bar x,\bar y,M_{xx},M_{xy},M_{yy}\}$. The common measure of the PSF size is the adaptive trace,
+\begin{equation}
+T = M_{xx} + M_{yy},
+\end{equation}
+which has units of pixels$^2$ and represents an rms spot size (total; the rms size per axis is $\frac12T$). The measure of shape is the ellipticity, which has two components that can be written as a complex number:
+\begin{equation}
+e = e_1+ie_2 = \frac{M_{xx}-M_{yy}+2iM_{xy}}{M_{xx}+M_{yy}}.
+\label{eq:edef}
+\end{equation}
+The ellipticity is dimensionless. Note that one always has $|e|<1$. Note that even though Eq.~(\ref{eq:E}) was inspired by Gaussians, it makes sense even for space-based PSFs that are very non-Gaussian.
+
+Shear is usually measured by taking the observed ellipticity of a galaxy $e_{\rm obs}$, removing the contribution due to non-circular PSF\footnote{Circularizing the PSF in software prior to shape measurement is one way to do this; the method that has been investigated most intensively for WFIRST is to circularize the PSF during stacking using the machinery of \citet{2011ApJ...741...46R}. We anticipate that many approaches will be tried on the data.}, and dividing by the responsivity factor ${\cal R} = d\langle e_{\rm obs}\rangle/d\gamma$. There are of course many different implementations of this concept in the literature, and these lead to different shear estimators. However we have to choose a representative example in order to define a requirement on PSF knowledge. Our representative example will be to take the ellipticity $e$ of the observed (PSF-convolved) image (Eq.~\ref{eq:edef}) as our $e_{\rm obs}$. We can then compute for any galaxy population the responsivity ${\cal R}$, which depends somewhat on the distribution of ellipticities, but is equal to 2 for well-resolved, roughly circular galaxies. For Gaussian PSFs and galaxies, it is given by
+\begin{equation}
+{\cal R} ({\rm Gaussian}) = 2 (1-e^2_{\rm rms}) {\rm Res}.
+\label{eq:RG}
+\end{equation}
+Here Res is the resolution factor of the galaxy,
+\begin{equation}
+{\rm Res} \equiv \left[ 1 + \frac{{\rm EE50(PSF)}^2}{r_{\rm eff}^2} \right]^{-1},
+\label{eq:Res}
+\end{equation}
+where the effective radius of the galaxy $r_{\rm eff}$ is the radius that encloses half of the light {\em before} PSF convolution. Beware that there are multiple notions of ``resolution factor'' in the literature. Ours is designed to go to 0 for point sources, and to 1 for sources large compared to the PSF. By construction, it is always lies in the range $[0,1]$.
+
+For general profiles, ${\cal R}$ may deviate from Eq.~(\ref{eq:RG}). In such cases, Eq.~(\ref{eq:Res}) remains the definition of resolution factor.
+

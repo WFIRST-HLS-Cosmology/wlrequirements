@@ -1,0 +1,29 @@
+#!/usr/bin/perl
+
+# Script to make content of dNdz table
+#
+# This basically reformats InputData/density.dat into a LaTeX table
+#
+
+$script = q{sed -n '/^[^\#]/p'};
+@data = split "\n", `$script InputData/density.dat`;
+$Nz = scalar @data; $Nz--;
+
+# Descriptor of each bin
+for $j (0..$Nz-1) {
+  $line[$j] = sprintf "\$%4.2f\\pm%4.2f\$ \& %4.2f", (split ' ', $data[$j+1]);
+}
+
+# Re-arrange into Ncol columns
+$Ncol=3;
+$Nrow = 1+int(($Nz-.5)/$Ncol);
+open(OUT, '>TeX/tab_dNdz.tex');
+for $irow (0..$Nrow-1) {
+  for $icol (0..$Ncol-1) {
+    $j = $icol*$Nrow+$irow;
+    if ($j<$Nz) {print OUT $line[$j];}
+    if ($icol!=$Ncol-1) {print OUT ' & ';}
+    if ($icol==$Ncol-1) {print OUT " \\\\\n";}
+  }
+}
+close OUT;
