@@ -1,3 +1,5 @@
+/* Numerical Recipes utilities file (public domain) */
+
 void nrerror(char error_text[]);
 
 double *dvector(long nl, long nh);

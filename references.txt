@@ -1,0 +1,7 @@
+PSF_P1G1/nr_utils.c and PSF_P1G1/nr_utils.h:
+	These files contain (parts of) the Numerical Recipes utility 
+files. These are in the public domain.
+
+Reference: Press, William H.; Teukolsky, Saul A.; Vetterling, William 
+T.; Flannery, Brian P.; "Numerical recipes in C. The art of scientific 
+computing" (1992) Cambridge University Press [ADS: 1992nrca.book.....P]

@@ -25,6 +25,10 @@ TeX/        Used for the paper (which serves as both the explanatory
             supplement and will be turned into a journal submission following
             SRR).
 
+I'm also using references.txt for listings of references for code (in 
+cases where they are previously published and/or we are not the 
+authors).
+
 == External Programs, Codes, and Libraries ==
 
 The WL requirements package uses external tools that may be in different 
