@@ -1,0 +1,246 @@
+#!/usr/bin/perl
+
+# --- Script to generate various pieces of photometric data in each filter ---
+
+# Get filters
+# Filter table:
+# (edges in microns)
+open(IN, 'InputData/Filters.txt') or die "Can't open filters file\n";
+$i=0;
+while ($line=<IN>) {
+  if ($line !~ m/^\#/) {
+    # Un-commented lines in filter table
+    ($filters[$i], $l1, $l2) = split ' ', $line;
+    $lambdamin{$filters[$i]} = $l1;
+    $lambdamax{$filters[$i]} = $l2;
+    $lambdactr{$filters[$i]} = ($l1+$l2)/2.;
+    $i++;
+  }
+}
+close IN;
+$NFILT = $i;
+
+# Get exposure time info
+open(IN, 'InputData/ExposureInfo.txt') or die "Can't open exposure time file\n";
+while ($line=<IN>) {
+  if ($line !~ m/^\#/) {
+    # Un-commented lines in filter table
+    ($filter, $ne, $t) = split ' ', $line;
+    $NumberOfExposures{$filter} = $ne;
+    $ExpTime{$filter} = $t;
+  }
+}
+close IN;
+
+# Extract instrument parameters
+$script = q{sed -n '/^[^\#]/p'}; # Strip comments
+$parfile = `$script InputData/Params.txt`;
+#
+$parfile =~ m/mask_cutoff_wavelength += +([\d\.eE\+\-]*)/;
+$mask_cutoff_wavelength = $1;
+$parfile =~ m/wfe_tot_budget += +([\d\.eE\+\-]*)/;
+$wfe_tot_budget = $1;
+$parfile =~ m/los_lofreq += +([\d\.eE\+\-]*)/;
+$los_lofreq = $1;
+$parfile =~ m/los_hifreq += +([\d\.eE\+\-]*)/;
+$los_hifreq = $1;
+$parfile =~ m/filter_trans += +([\d\.eE\+\-]*)/;
+$filter_trans = $1;
+$parfile =~ m/read_noise_floor += +([\d\.eE\+\-]*)/;
+$read_noise_floor = $1;
+$parfile =~ m/dark_current += +([\d\.eE\+\-]*)/;
+$dark_current = $1;
+$parfile =~ m/elat_ref += +([\d\.eE\+\-]*)/;
+$elat_ref = $1;
+$parfile =~ m/elon_ref += +([\d\.eE\+\-]*)/;
+$elon_ref = $1;
+$parfile =~ m/ebv_ref += +([\d\.eE\+\-]*)/;
+$ebv_ref = $1;
+$parfile =~ m/full_well += +([\d\.eE\+\-]*)/;
+$full_well = $1;
+$parfile =~ m/fov_deg2 += +([\d\.eE\+\-]*)/;
+$fov_deg2 = $1;
+
+# Collect information on the stars
+$instars = 'InputData/Trilegal_SGP_1deg2.dat';
+$stardata = `sed -n -e/^\\\#\\\!/p $instars`;      # Get #! commented lines
+#
+# Extract column information:
+#
+$stardata =~ m/col_m2\/m1 += +([\d]+)/;
+$col_m2m1 = $1;
+$stardata =~ m/col_first_band += +([\d]+)/;
+$col_first_band = $1;
+$stardata =~ m/num_bands += +([\d]+)/;
+$star_num_bands = $1;
+$stardata =~ m/lambda += +([\d\.eE\+\-\,\h]+)/;
+$array_of_lambda = $1;
+@star_lambda = split /\, +/, $array_of_lambda;
+$stardata =~ m/ab_offset += +([\d\.eE\+\-\,\h]+)/;
+$array_of_ab_offset = $1;
+@star_ab_offset = split /\, +/, $array_of_ab_offset;
+#
+# C.H. -> for testing purposes, can print band information
+#print "1st col -> $col_first_band; num_bands -> $star_num_bands; col_m2/m1 = $col_m2m1\n";
+#print "LAMBDA: @star_lambda\n";
+#print "AB_OFFSET: @star_ab_offset\n";
+#
+open(STARS_IN, $instars) or die;
+open(STARS_OUT, '>scr/stars.temp') or die;
+print STARS_OUT "# Star catalog from: $instars\n";
+print STARS_OUT $stardata; # Repeat header information
+print STARS_OUT "#\n# Columns of this file:\n";
+print STARS_OUT "# [1] Is single star? (1=Yes, 0=No)\n";
+for $j (0..$NFILT-1) {print STARS_OUT (sprintf "# [%d] AB Mag in %s\n", $j+1, $filters[$j]);}
+print STARS_OUT "#\n";
+while ($line=<STARS_IN>) {
+  if ($line !~ m/^\#/) {
+    # This is an un-commented star
+    @data = split ' ', $line;
+    @data = ('', @data);            # Offset by one so that 1st column is $data[1], etc.
+    #
+    # Is star single?
+    print STARS_OUT (sprintf "%1d", ($data[$col_m2m1]>1e-8? 0: 1));
+    #
+    # Get AB magnitudes
+    for $i (0..$star_num_bands-1) {$mag[$i] = $data[$col_first_band+$i] + $star_ab_offset[$i];}
+    #
+    # Interpolate to our filters -- right now, straight linear interpolation by lambda_eff
+    # (not clear that something more sophisticated is justified at present)
+    for $j (0..$NFILT-1) {
+      $filter = $filters[$j];
+      $i=0;
+      while ($i<$star_num_bands-2 and $star_lambda[$i+1]<$lambdactr{$filter}) {$i++;}
+      $frac = ($lambdactr{$filter} - $star_lambda[$i]) / ($star_lambda[$i+1]-$star_lambda[$i]);
+      $mymag[$j] = $mag[$i] + $frac*($mag[$i+1]-$mag[$i]);
+      print STARS_OUT (sprintf " %6.3f", $mymag[$j]);
+    }
+    #
+    # Print original AB magnitudes (for testing only)
+    # for $i (0..$star_num_bands-1) {print STARS_OUT (sprintf " %6.3f", $mag[$i]);}
+    #
+    # Next star!
+    print STARS_OUT "\n";
+  }
+}
+close STARS_IN;
+close STARS_OUT;
+
+# Tell the user what information was extracted
+# [for testing only!]
+# for $i (0..$NFILT-1) {print "$filters[$i], N = $NumberOfExposures{$filters[$i]}, time = $ExpTime{$filters[$i]} s\n";}
+# print "mask cutoff wavelength = $mask_cutoff_wavelength\n";
+
+# Build exposure time calculator
+system "gcc exptimecalc.c -lm -Wall -O3 -o photoetc.exe -DWL_MODE -DWFE_OVERRIDE -DIN_DLON -DOUT_EXTRA_PSF_PROPERTIES";
+
+print "Parameters extracted ... now running ETC (some warnings may appear) ...\n";
+
+open(OUT, '>scr/photopar.txt') or die;
+
+print OUT "# Columns:\n";
+print OUT "# [FNAME] Filter name\n";
+print OUT "# [PEE50] PSF EE50 in arcsec\n";
+print OUT "# [PSF1P] PSF peak fraction of signal in one pixel\n";
+print OUT "# [EAB20] Electrons per AB mag 20 star in 1 exposure\n";
+print OUT "# [ABSAT] AB magnitude of star that barely saturates\n";
+print OUT "# [NUMSA] Number of saturated stars per exposure at SGP (all SCAs included)\n";
+print OUT "# [NP100] Number of photons from unsaturated single S/N>100 stars, per exposure\n";
+print OUT "# [NP050] Number of photons from unsaturated single S/N>50 stars, per exposure\n";
+print OUT "# [NS100] Number of unsaturated single S/N>100 stars, per exposure\n";
+print OUT "# [NS050] Number of unsaturated single S/N>50 stars, per exposure\n";
+print OUT "#\n";
+print OUT "# Use the following table to read columns from this file in another program:\n";
+print OUT "# (should maintain the 5-character column names if we add outputs to this file)\n";
+print OUT "#! FNAME PEE50 PSF1P EAB20 ABSAT NUMSA NP100 NP050 NS100 NS050\n";
+print OUT "#\n";
+
+# Loop over filters, get information from each.
+for $i (0..$NFILT-1) {
+  $filter = $filters[$i];
+
+  # Write input file to the ETC
+  open(TO_ETC, '>temp.photo') or die;
+  print TO_ETC "1\n";                                                      # Select configuration file, not generic input
+  if ($lambdamax{$filter}>$mask_cutoff_wavelength) {                       # Red or blue file depending on wavelength range
+    print TO_ETC "InputData/config_red.dat\n";
+  } else {
+    print TO_ETC "InputData/config_blue.dat\n";
+  }
+  print TO_ETC (sprintf "%12.5e\n", $wfe_tot_budget/1e3);                  # Wavefront error (convert from nm to microns)
+  print TO_ETC "2\n";                                                      # Detector type (we have chosen H4RG-10; hard-coded)
+  print TO_ETC (sprintf "%12.5e\n", sqrt($los_lofreq**2+$los_hifreq**2));  # LOS motion, rms arcsec per axis
+  print TO_ETC "$lambdamin{$filter}\n";                                    # Min wavelength (microns)
+  print TO_ETC "$lambdamax{$filter}\n";                                    # Max wavelength (microns)
+  print TO_ETC "$filter_trans\n";                                          # Filter throughput
+  print TO_ETC "$ExpTime{$filter}\n";                                      # Single exposure time (s)
+  print TO_ETC "$read_noise_floor\n";                                      # Read noise floor (e- rms)
+  print TO_ETC "$dark_current\n";                                          # Dark current (e/p/s)
+  print TO_ETC "$elat_ref\n$elon_ref\n";                                   # Reference ecliptic coordinates
+  print TO_ETC "$ebv_ref\n";                                               # Reference dust column
+  print TO_ETC "$NumberOfExposures{$filter}\n";                            # Number of exposures in this filter
+  close(TO_ETC);
+
+  # Run exposure time calculator
+  $output{$filter} = `./photoetc.exe < temp.photo`;
+  system "rm temp.photo";
+  # print "$output{$filter}\n";
+
+  # Output parameters
+  print OUT (sprintf "%4s ", $filter);
+
+  # PSF properties
+  $output{$filter} =~ m/PSF EE50\: +([\dE\+\-\.]+) /;
+  $ee50 = $1;
+  print OUT " $ee50";
+  $output{$filter} =~ m/PSF peak surface brightness\: +([\dE\+\-\.]+) /;
+  $peak_surf = $1;
+  print OUT " $peak_surf";
+
+  # Brightness of star
+  $output{$filter} =~ m/at AB mag 20\: +([\dE\+\-\.]+) e-/;
+  $el_per_ab20 = $1;
+  print OUT " $el_per_ab20";
+
+  # Saturation magnitude of a star (AB)
+  $satur_mag_star = 20. - log($full_well/$el_per_ab20/$peak_surf)/log(10.)*2.5;
+  print OUT (sprintf " %8.5f", $satur_mag_star);
+
+  # Star information
+  $script = q{sed -n '/^[^\#]/p'}; # Strip comments
+  @lines = split "\n", `$script scr/stars.temp`;
+  $sat_count = 0;
+  $num_photons_100 = $num_photons_50 = 0;
+  $num_stars_100 = $num_stars_50 = 0;
+  for $star (@lines) {
+    @data = split ' ', $star;
+    $mag = $data[$i+1];        # Star magnitude (AB) in this filter
+    #
+    # Single stars (for PSF purposes)
+    if ($data[0]>.5) {
+      if ($mag>$satur_mag_star) {
+        $ncts = $el_per_ab20 * 10.**(0.4*(20.-$mag));
+        if ($ncts>1e4) {
+          $num_photons_100 += $fov_deg2 * $ncts;
+          $num_stars_100 += $fov_deg2;
+        }
+        if ($ncts>2.5e3) {
+          $num_photons_50 += $fov_deg2 * $ncts;
+          $num_stars_50 += $fov_deg2;
+        }
+      }
+    }
+    # Saturated star count
+    if ($mag<=$satur_mag_star) {
+      $sat_count += $fov_deg2;
+    }
+  }
+  print OUT (sprintf " %5.1f %10.4E %10.4E %6.1f %6.1f", $sat_count, $num_photons_100, $num_photons_50, $num_stars_100, $num_stars_50);
+  
+  print OUT "\n";
+}
+
+close OUT;
+
+# Cleanup
+system "rm photoetc.exe";

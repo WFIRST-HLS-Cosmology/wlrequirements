@@ -18,8 +18,7 @@ InputData/  All sources of input data on the instrument design should go here
             on the galaxy sample or instrument properties, please check first
             whether that information is here!
 
-scr/        Used for scratch work (files that are written and then read by
-            the same script).
+scr/        Used for scratch work or storage of intermediate results.
 
 TeX/        Used for the paper (which serves as both the explanatory
             supplement and will be turned into a journal submission following
@@ -69,6 +68,10 @@ sensitivities of the galaxy shear to each aberration (the "C"
 coefficients in the sensitivity matrix). Also reports, for each l-bin, 
 the scaling factors (S-values) for that combination of aberrations. (The 
 scripts in PSF_P1G1 must be run first.)
+
+BUILD_PHOTO_PROPERTIES:
+  Writes various parameters of the imaging survey in the shape 
+measurement filters to scr/photopar.txt
 
 CLEANUP:
   Removes temporary files that are not synchronized by GitHub (prompts 

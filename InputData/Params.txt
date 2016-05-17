@@ -1,0 +1,53 @@
+# Telescope and instrument parameters
+#
+# Each parameter has a name and a value
+# Un-commented lines in this file should be blank or of the form
+# parameter_name = parameter_value
+#
+
+# === Observatory properties ===
+
+# Line of sight motion budget (arcsec rms per axis)
+# includes low-frequency (controlled, in band)
+# and high-frequency (jitter)
+# [These get RSS'ed in the ETC but in some areas we may want to distinguish them]
+los_lofreq =   0.014
+los_hifreq =   0.014
+
+# === Optics properties ===
+
+# Field of view in deg^2
+fov_deg2 = 0.281
+
+# Mask cutoff wavelength (filters with response beyond this wavelength will have a pupil mask)
+# unit: micron
+mask_cutoff_wavelength = 1.7
+
+# Total wavefront error budget (nm rms)
+# (all optical elements; does not include LOS motion)
+wfe_tot_budget = 90.0
+
+# Filter transmission
+# (fractional, on top part of bandpass)
+filter_trans = 0.95
+
+# === Detector properties ===
+
+# Read noise floor (e- rms after many samples)
+read_noise_floor = 5
+
+# Dark current (e/p/s)
+dark_current = 0.015
+
+# Saturation (electrons per pixel)
+full_well = 1e5
+
+# === Reference observing conditions ===
+# (for the ETC)
+
+# Ecliptic latitude and (Sun-relative) longitude
+elat_ref = 75
+elon_ref = 0
+
+# Dust reddening E(B-V), in magnitudes
+ebv_ref = 0.035
