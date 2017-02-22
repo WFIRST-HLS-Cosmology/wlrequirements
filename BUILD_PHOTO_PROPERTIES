@@ -60,6 +60,8 @@ $parfile =~ m/full_well += +([\d\.eE\+\-]*)/;
 $full_well = $1;
 $parfile =~ m/fov_deg2 += +([\d\.eE\+\-]*)/;
 $fov_deg2 = $1;
+$parfile =~ m/counts_starsys_Z1 += +([\d\.eE\+\-]*)/;
+$counts_starsys_Z1 = $1;
 
 # Collect information on the stars
 $instars = 'InputData/Trilegal_SGP_1deg2.dat';
@@ -90,7 +92,7 @@ open(STARS_OUT, '>scr/stars.temp') or die;
 print STARS_OUT "# Star catalog from: $instars\n";
 print STARS_OUT $stardata; # Repeat header information
 print STARS_OUT "#\n# Columns of this file:\n";
-print STARS_OUT "# [1] Is single star? (1=Yes, 0=No)\n";
+print STARS_OUT "# [0] Is single star? (1=Yes, 0=No)\n";
 for $j (0..$NFILT-1) {print STARS_OUT (sprintf "# [%d] AB Mag in %s\n", $j+1, $filters[$j]);}
 print STARS_OUT "#\n";
 while ($line=<STARS_IN>) {
@@ -145,6 +147,8 @@ print OUT "# [PSF1P] PSF peak fraction of signal in one pixel\n";
 print OUT "# [EAB20] Electrons per AB mag 20 star in 1 exposure\n";
 print OUT "# [ABSAT] AB magnitude of star that barely saturates\n";
 print OUT "# [NUMSA] Number of saturated stars per exposure at SGP (all SCAs included)\n";
+print OUT "# [EP100] Effective (systematic-reduced) number of photons from unsaturated single S/N>100 stars, per exposure\n";
+print OUT "# [EP050] Effective (systematic-reduced) number of photons from unsaturated single S/N>50 stars, per exposure\n";
 print OUT "# [NP100] Number of photons from unsaturated single S/N>100 stars, per exposure\n";
 print OUT "# [NP050] Number of photons from unsaturated single S/N>50 stars, per exposure\n";
 print OUT "# [NS100] Number of unsaturated single S/N>100 stars, per exposure\n";
@@ -152,7 +156,7 @@ print OUT "# [NS050] Number of unsaturated single S/N>50 stars, per exposure\n";
 print OUT "#\n";
 print OUT "# Use the following table to read columns from this file in another program:\n";
 print OUT "# (should maintain the 5-character column names if we add outputs to this file)\n";
-print OUT "#! FNAME PEE50 PSF1P EAB20 ABSAT NUMSA NP100 NP050 NS100 NS050\n";
+print OUT "#! FNAME PEE50 PSF1P EAB20 ABSAT NUMSA EP100 EP050 NP100 NP050 NS100 NS050\n";
 print OUT "#\n";
 
 # Loop over filters, get information from each.
@@ -212,6 +216,7 @@ for $i (0..$NFILT-1) {
   $sat_count = 0;
   $num_photons_100 = $num_photons_50 = 0;
   $num_stars_100 = $num_stars_50 = 0;
+  $eff_num_photons_100 = $eff_num_photons_50 = 0;
   for $star (@lines) {
     @data = split ' ', $star;
     $mag = $data[$i+1];        # Star magnitude (AB) in this filter
@@ -221,10 +226,12 @@ for $i (0..$NFILT-1) {
       if ($mag>$satur_mag_star) {
         $ncts = $el_per_ab20 * 10.**(0.4*(20.-$mag));
         if ($ncts>1e4) {
+          $eff_num_photons_100 += $fov_deg2 / (1./$counts_starsys_Z1+1./$ncts);
           $num_photons_100 += $fov_deg2 * $ncts;
           $num_stars_100 += $fov_deg2;
         }
         if ($ncts>2.5e3) {
+          $eff_num_photons_50 += $fov_deg2 / (1./$counts_starsys_Z1+1./$ncts);
           $num_photons_50 += $fov_deg2 * $ncts;
           $num_stars_50 += $fov_deg2;
         }
@@ -235,7 +242,8 @@ for $i (0..$NFILT-1) {
       $sat_count += $fov_deg2;
     }
   }
-  print OUT (sprintf " %5.1f %10.4E %10.4E %6.1f %6.1f", $sat_count, $num_photons_100, $num_photons_50, $num_stars_100, $num_stars_50);
+  print OUT (sprintf " %5.1f %10.4E %10.4E %10.4E %10.4E %6.1f %6.1f", $sat_count, $eff_num_photons_100, $eff_num_photons_50,
+    $num_photons_100, $num_photons_50, $num_stars_100, $num_stars_50);
   
   print OUT "\n";
 }

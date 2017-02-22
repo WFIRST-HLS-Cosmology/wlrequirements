@@ -16,6 +16,9 @@ los_hifreq =   0.014
 
 # === Optics properties ===
 
+# Pixel scale (in arcsec)
+pixel_scale = 0.11
+
 # Field of view in deg^2
 fov_deg2 = 0.281
 
@@ -51,3 +54,13 @@ elon_ref = 0
 
 # Dust reddening E(B-V), in magnitudes
 ebv_ref = 0.035
+
+# Cosmic ray rate, events per second per (total) FoV
+cr_rate = 1504.
+
+# === Systematics budget parameters ===
+
+# Number of counts in a star where the systematics are 1 sigma
+# relative to the statistical errors
+# [SRD says 0.5 sigma @ 87 ke -> equivalent to 1 sigma @ 348 ke]
+counts_starsys_Z1 = 3.48e5

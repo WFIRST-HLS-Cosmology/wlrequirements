@@ -9,7 +9,6 @@
 #
 # They are automatically counted and numbered (0 .. N-1) by the subsequent scripts.
 #
-10 30
 31 99
 100 315
 316 999

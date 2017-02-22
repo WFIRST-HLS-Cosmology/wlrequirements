@@ -220,11 +220,17 @@ int main(int argc, char **argv) {
   mom[4] = 4.*N_SUBPIX*N_SUBPIX; /* Cyy */
   get_adaptive_gaussmomX(Objtot, pad, mom, mom+1, mom+2, mom+3, mom+4, 1e-9, 180);
 
+#ifndef SPOT_OUTPUT
   printf("%14.7le %14.7le %14.7le %14.7le %14.7le     %10.8lf %11.8lf %11.8lf\n",
       mom[0], mom[1], mom[2], mom[3], mom[4], (mom[2]+mom[4])/N_SUBPIX/N_SUBPIX, (mom[2]-mom[4])/(mom[2]+mom[4]),
       2*mom[3]/(mom[2]+mom[4]));
+#endif
 
-#if 0
+#ifdef SPOT_OUTPUT
+  printf("# %14.7le %14.7le %14.7le %14.7le %14.7le     %10.8lf %11.8lf %11.8lf\n",
+      mom[0], mom[1], mom[2], mom[3], mom[4], (mom[2]+mom[4])/N_SUBPIX/N_SUBPIX, (mom[2]-mom[4])/(mom[2]+mom[4]),
+      2*mom[3]/(mom[2]+mom[4]));
+
   /* Output of the spot */
   for(i=0;i<=2*pad;i++) {
     for(j=0;j<=2*pad;j++)
