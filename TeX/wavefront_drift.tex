@@ -102,5 +102,7 @@ A \le \frac1{\sqrt{24}}\lVert{\boldsymbol\Lambda} \rVert |{\boldsymbol\psi}| |\d
 = 2.3\times 10^{-4}\, {\rm nm}^{-1}\times |\dot{\boldsymbol\psi}({\boldsymbol\theta})| \Delta t.
 \end{equation}
 
-\CMH{Will want to finish this, including figuring out the angular scale dependence. Current requirement that we have worked to is $\Delta t$ = 1 exposure (184 s) and $|\dot{\boldsymbol\psi}({\boldsymbol\theta})| \Delta t<0.707\,$nm, which produces a spurious shear of $1.6\times 10^{-4}$, RMS per component. This is getting very tight as compared to the requirements in Table~\ref{tab:addbands}. A mitigating factor is the redshift dependence from the P1+G1 model: the redshift weights $w(z_i)$, plugged into the machinery from \S\ref{ss:implement-add}, give $S[{\bf w},\alpha]$ ranging from 0.31--0.48.}
+The current requirement that we have worked to is $\Delta t$ = 1 exposure (160 s) and $|\dot{\boldsymbol\psi}({\boldsymbol\theta})| \Delta t<1\,$nm, which produces a spurious shear of $2.3\times 10^{-4}$, RMS per component. However the $S$-factor for the focus$\times$astigmatism mode is 0.49 in the worst angular bin, so the implied spurious shear is $AS^{1/2} = 1.6\times 10^{-4}$. This is getting very tight as compared to the requirements in Table~\ref{tab:addbands}, which gives a top-level error of $2.6\times 10^{-4}$; 38\%\ of the shear systematic error, in an RSS sense, is currently being taken up by wavefront drift.
+
+\CMH{We don't like having this much of the error budget taken up by one term ... will need to revisit how a time-dependent PSF propagates through the rest of the measurement.}
 
