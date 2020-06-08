@@ -104,3 +104,5 @@ PSF_P1G1:
   Galaxy sensitivity coefficients according to models P1 (PSF) and G1 
 (shape measurement). You can build the coefficients with the "BUILD" 
 script in this directory.
+  The BUILD-JITTER script does the same for some additional scripts we
+made for the referee report to Troxel et al. (2020).
