@@ -11,8 +11,8 @@
 # includes low-frequency (controlled, in band)
 # and high-frequency (jitter)
 # [These get RSS'ed in the ETC but in some areas we may want to distinguish them]
-los_lofreq =   0.014
-los_hifreq =   0.014
+los_lofreq =   0.008
+los_hifreq =   0.012
 
 # === Optics properties ===
 

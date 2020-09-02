@@ -41,6 +41,17 @@ int main(int argc, char **argv) {
   double mom[5], ZA[8], jit[3];
   double alpha, alphaplus;
 
+#ifdef READ_PUPIL
+  FILE *fp_pupil;
+  double **my_pupil;
+  my_pupil = dmatrix(0,2047,0,2047);
+  fp_pupil = fopen("pupil1.txt", "r");
+  while (fscanf(fp_pupil, "%ld %ld %lg", &i, &j, &temp)!=EOF) {
+    my_pupil[i][j] = temp;
+  }
+  fclose(fp_pupil);
+#endif
+
   PSF = NULL;
 
   if (argc<24) {
@@ -118,7 +129,17 @@ int main(int argc, char **argv) {
     for(i=0;i<A[l].Nx;i++) for(j=0;j<A[l].Nx;j++) {
       delx = i*A[l].dx - xctr;
       dely = j*A[l].dx - yctr;
+#ifdef READ_PUPIL
+      delx /= Rap/1024.;
+      dely /= Rap/1024.;
       /* Spider removal would go here*/
+      if (sqrt(delx*delx+dely*dely)<1024) {
+        A[l].aperture[i][2*j] = my_pupil[1024+(int)floor(delx)][1024+(int)floor(dely)];
+      } else {
+        A[l].aperture[i][2*j] = 0.;
+      }
+      A[l].aperture[i][2*j+1] = 0.;
+#endif
     }
 
     /* Insert chromatic astrometric gradient */

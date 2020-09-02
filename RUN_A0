@@ -18,7 +18,7 @@ $command_line_input = 0;
 # If help is requested:
 if (scalar @inputs > 0) {
   if ($inputs[0] eq '--help') {
-    die "Usage: ./RUN_A0 REWEIGHT_FLAG RERUN_FLAG TYPE_CODE <file1> <file2> ...\nTypes: a=additive, m=multiplicative\n";
+    die "Usage: ./RUN_A0 REWEIGHT_FLAG RERUN_FLAG TYPE_CODE <file1> <file2> ...\nTypes: a=additive, m=multiplicative, p=varying multiplicative\n";
   }
 }
 # If those inputs are set:
@@ -89,6 +89,11 @@ for $j (0..$Nz-1) {($my_z[$j], $my_halfwidth[$j], $nbar_my_z[$j]) = split ' ', $
 # If REWEIGHT_FLAG = 1005 then finds the "worst case" weights (i.e. that will give the tightest requirement) from -1<=w<=1
 # If REWEIGHT_FLAG = 1007 then reads w from a file
 #
+#
+# Varying multiplicative shear weights:
+# If REWEIGHT_FLAG = 2000 then the weights are as given here (un-comment @wt_z)
+# If REWEIGHT_FLAG = 2002 then forces equal weights (all 1)
+#
 if ($command_line_input==0) {
   $REWEIGHT_FLAG = 2;
 }
@@ -110,6 +115,7 @@ for $it (0..$Ntemp-1) {
 
 # If multiplicative case, force one merged bin
 if ($TYPE_CODE eq 'm') {$lmaxbin[0] = $lmaxbin[$Ntemp-1]; $Ntemp=1;}
+if ($TYPE_CODE eq 'p') {$lmaxbin[0] = $lmaxbin[$Ntemp-1]; $Ntemp=1;}
 
 # Maximum multipole
 $lmax = $lmaxbin[$Ntemp-1]+1;
@@ -175,11 +181,13 @@ close OUT;
 
 # Run CLASS and get WL power spectra
 if ($RERUN_FLAG!=0) {
-  if (system "$CLASS $ini") {die;}                      # <--- HERE IS THE CALL TO CLASS!
+  if (system "$CLASS $ini") {die;}                         # <--- HERE IS THE CALL TO CLASS!
+  system "python convolve_pert.py > scr/wfirst_cl_dp.dat"; # <--- MAKES THE VARYING MULTIPLICATIVE BIAS
 }
 #
 # ... and extract the appropriate columns
 @data = split "\n", `cat scr/wfirst_cl.dat`;
+if ($TYPE_CODE eq 'p') {@data_p = split "\n", `cat scr/wfirst_cl_dp.dat`;}
 $i=0;
 while ($data[$i] !~ m/\#.*1\:l/) {$i++;}
 @cols = split ' ', $data[$i];
@@ -214,6 +222,15 @@ LINEL: for $line (@data) {
     if ($za==$zb) {$Power[$za][$za] += $NL[$za];}
   }}
 
+  # same for varying multiplicative case
+  if ($TYPE_CODE eq 'p') {
+    @ThisLP = split ' ', $data_p[$l-2];
+    @ThisLP = ('',@ThisLP);
+    for $za (0..$Nz-1) { for $zb (0..$Nz-1) {
+      $dPower[$za][$zb] = $ThisLP[$col[$za][$zb]];
+    }}
+  }
+
   # Get inverse-power matrix
   open(OUT, "| ./matrinv.x > temp");
   print OUT "$Nz\n";
@@ -244,7 +261,7 @@ LINEL: for $line (@data) {
       $wt_z[$za] = $numer/$denom;
     }
   }
-  if ($REWEIGHT_FLAG==2 or $REWEIGHT_FLAG==1002) {
+  if ($REWEIGHT_FLAG==2 or $REWEIGHT_FLAG==1002 or $REWEIGHT_FLAG==2002) {
       for $za (0..$Nz-1) {$wt_z[$za]=1.;}
   }
   if ($REWEIGHT_FLAG==3) {
@@ -453,6 +470,24 @@ LINEL: for $line (@data) {
     }
     $SN2 = (2*$l+1)/2. * $fsky * $prod;
   }
+  #
+  # Same for varying multiplicative case
+  # want: prod = Delta C_{ab} C^{-1}_{bc} Delta C_{cd} C^{-1}_{da}
+  # Delta C_{ab} = (w_a+w_b) C_{ab}
+  if ($TYPE_CODE eq 'p') {
+    $prod = 0;
+    for $za (0..$Nz-1) {
+      for $zb (0..$Nz-1) {
+        for $zc (0..$Nz-1) {
+          for $zd (0..$Nz-1) {
+            $prod += ($wt_z[$za]+$wt_z[$zb]) * ($wt_z[$zc]+$wt_z[$zd]) * $dPower[$za][$zb] * $dPower[$zc][$zd]
+                     * $CtotInverse[$zb*$Nz+$zc] * $CtotInverse[$zd*$Nz+$za];
+          }
+        }
+      }
+    }
+    $SN2 = (2*$l+1)/2. * $fsky * $prod;
+  }
 
   # Template summation -- weight by template for additive, use template as binary mask for multiplicative
   for $itemp (0..$Ntemp-1) {
@@ -460,6 +495,9 @@ LINEL: for $line (@data) {
       $SN2Temp[$itemp] += $SN2 * $T[$itemp][$l]**2;
     }
     if ($TYPE_CODE eq 'm') {
+      $SN2Temp[$itemp] += $SN2 * ($T[$itemp][$l]>1e-98? 1: 0);
+    }
+    if ($TYPE_CODE eq 'p') {
       $SN2Temp[$itemp] += $SN2 * ($T[$itemp][$l]>1e-98? 1: 0);
     }
   }
@@ -474,5 +512,8 @@ for $itemp (0..$Ntemp-1) {
   }
   if ($TYPE_CODE eq 'm') {
     print (sprintf "%2d %11.5lE %11.5lE\n", $itemp, $SN2Temp[$itemp], $SN2Temp[$itemp]**(-0.5));
+  }
+  if ($TYPE_CODE eq 'p') {
+    print (sprintf "%2d %11.5lE %11.5lE\n", $itemp, $SN2Temp[$itemp], $SN2Temp[$itemp]**(-0.25));
   }
 }

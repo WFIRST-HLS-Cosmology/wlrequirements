@@ -42,10 +42,11 @@ for $filter (@filters) {
     @lines = split "\n", `cat PSF_P1G1/coefficients_gal_$filter.dat`;
     $Nz = scalar @lines;
     $maxsens = 0;
+    $worstbin = 0;
     for $iz (0..$Nz-1) {
       @data = split ' ', $lines[$iz];
       $sens[$iz] = $data[$offset+$ia];
-      if (abs($sens[$iz])>$maxsens) {$maxsens = abs($sens[$iz]);}
+      if (abs($sens[$iz])>$maxsens) {$maxsens = abs($sens[$iz]); $worstbin=$iz;}
     }
     open(OUT, '>sens.temp');
     for $iz (0..$Nz-1) {
@@ -65,6 +66,7 @@ for $filter (@filters) {
     for $itemp (0..$Ntemp-1) {
       print "$data[$itemp]";
       print (sprintf " %6.4f", ($A0[$itemp]/$A0ref[$itemp])**(-2));
+      print (sprintf " %2d", $worstbin);
       print "\n";
     }
     $RERUN_FLAG = 0;

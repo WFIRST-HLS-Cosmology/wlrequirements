@@ -7,7 +7,7 @@
 #
 # Lines beginning with # are comments and should be ignored by scripts reading this file.
 #
-J 6 160
-H 5 160
-F184 5 160
+J 6 140.2501
+H 5 140.2501
+F184 5 140.2501
 
