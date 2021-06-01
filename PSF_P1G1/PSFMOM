@@ -1,0 +1,218 @@
+#!/usr/bin/perl
+
+# Filter table:
+# (edges in microns)
+open(IN, '../InputData/Filters.txt') or die "Can't open filters file\n";
+while ($line=<IN>) {
+  if ($line !~ m/^\#/) {
+    # Un-commented lines in filter table
+    @data = split ' ', $line;
+    $filters{$data[0]} = "$data[1] $data[2]";
+  }
+}
+close IN;
+
+# Reference parameters
+$ref_pupil = 1;
+$ref_jit = 400; # image motion in mas^2 per axis
+$Nlam = 1; # number of wavelength points
+$wfe = 90.; # [nm] static wave front error to use in computing coefficients
+
+$Z = '0 'x8;
+
+# Build image ellipticity code:
+#
+system "rm main.x";
+system "gcc main.c -o main.x -lm -Wall -O3";
+if (not -e 'main.x') {die "Error: did not create main.x\n";}
+
+system "rm main-mirror.x";
+system "gcc main-mirror.c -o main-mirror.x -lm -Wall -O3";
+if (not -e 'main-mirror.x') {die "Error: did not create main.x\n";}
+
+#
+# Calling format for the image ellipticity code:
+# ./main.x pupil lambdamin lambdamax Nlam hexflags reff g1 g2 ZA0..ZA7 jitxx jitxy jityy Dx Dy alpha alphaplus
+
+$reff = 0.0;
+for $f (sort keys %filters) {
+    print "Filter --> $f wavelength = $filters{$f} um\n";
+
+    # reference
+    @data0 = split ' ', `./main.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Z  $ref_jit 0 $ref_jit 0 0 0 0`;
+
+    # -- ELLIPTICITY --
+    print "\n .. ellipticity ..\n\n";
+
+    # Get d(observed image ellipticity)/d(foc*astig) [nm^-2]
+    $Zt = sprintf "%10.7f %10.7f 0 0 0 0 0 0 ", $wfe/sqrt(2.), -$wfe/sqrt(2.);
+    @data1 = split ' ', `./main.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    $Zt = sprintf "%10.7f %10.7f 0 0 0 0 0 0 ", $wfe/sqrt(2.), $wfe/sqrt(2.);
+    @data2 = split ' ', `./main.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $ellip_coef_fa = ($data2[6]-$data1[6])/$wfe**2;
+
+    # Get d(observed image ellipticity)/d(coma*coma) [nm^-2]
+    $Zt = sprintf "0 0 0 %10.7f 0 0 0 0 ", $wfe;
+    @data1 = split ' ', `./main.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    $Zt = sprintf "0 0 0 0 %10.7f 0 0 0 ", $wfe;
+    @data2 = split ' ', `./main.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $ellip_coef_cc = ($data2[6]-$data1[6])/(-2*$wfe**2);
+
+    # Get d(observed image ellipticity)/d(coma*trefoil) [nm^-2]
+    $Zt = sprintf "0 0 0 %10.7f 0 0 %10.7f 0 ", $wfe/sqrt(2.), $wfe/sqrt(2.);
+    @data1 = split ' ', `./main.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    $Zt = sprintf "0 0 0 %10.7f 0 %10.7f 0 0 ", $wfe/sqrt(2.), $wfe/sqrt(2.);
+    @data2 = split ' ', `./main.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $ellip_coef_ct = ($data2[6]-$data1[6])/$wfe**2;
+
+    # Get d(observed image ellipticity)/d(sph*astig) [nm^-2]
+    $Zt = sprintf "0 %10.7f 0 0 0 0 0 %10.7f ", $wfe/sqrt(2.), -$wfe/sqrt(2.);
+    @data1 = split ' ', `./main.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    $Zt = sprintf "0 %10.7f 0 0 0 0 0 %10.7f ", $wfe/sqrt(2.), $wfe/sqrt(2.);
+    @data2 = split ' ', `./main.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $ellip_coef_sa = ($data2[6]-$data1[6])/$wfe**2;
+
+    print (sprintf "%12.5E %12.5E %12.5E %12.5E\n", $ellip_coef_fa, $ellip_coef_cc, $ellip_coef_ct, $ellip_coef_sa);
+    $Le = sqrt($ellip_coef_fa**2+$ellip_coef_sa**2);
+    $Lo = abs($ellip_coef_cc) + sqrt($ellip_coef_cc**2+$ellip_coef_ct**2);
+    $L = $Le>$Lo? $Le: $Lo;
+
+    # Get d(observed image ellipticity)/d(foc*astig) [nm^-2]
+    $Zt = sprintf "%10.7f %10.7f 0 0 0 0 0 0 ", $wfe/sqrt(2.), -$wfe/sqrt(2.);
+    @data1 = split ' ', `./main-mirror.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    $Zt = sprintf "%10.7f %10.7f 0 0 0 0 0 0 ", $wfe/sqrt(2.), $wfe/sqrt(2.);
+    @data2 = split ' ', `./main-mirror.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $Kellip_coef_fa = ($data2[6]-$data1[6])/$wfe**2;
+
+    # Get d(observed image ellipticity)/d(coma*coma) [nm^-2]
+    $Zt = sprintf "0 0 0 %10.7f 0 0 0 0 ", $wfe;
+    @data1 = split ' ', `./main-mirror.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    $Zt = sprintf "0 0 0 0 %10.7f 0 0 0 ", $wfe;
+    @data2 = split ' ', `./main-mirror.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $Kellip_coef_cc = ($data2[6]-$data1[6])/(-2*$wfe**2);
+    $Kbar_cc = log($data2[5]/$data0[5])/$wfe**2 * 2.;
+
+    # Get d(observed image ellipticity)/d(coma*trefoil) [nm^-2]
+    $Zt = sprintf "0 0 0 %10.7f 0 0 %10.7f 0 ", $wfe/sqrt(2.), $wfe/sqrt(2.);
+    @data1 = split ' ', `./main-mirror.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    $Zt = sprintf "0 0 0 %10.7f 0 %10.7f 0 0 ", $wfe/sqrt(2.), $wfe/sqrt(2.);
+    @data2 = split ' ', `./main-mirror.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $Kellip_coef_ct = ($data2[6]-$data1[6])/$wfe**2;
+
+    # Get d(observed image ellipticity)/d(sph*astig) [nm^-2]
+    $Zt = sprintf "0 %10.7f 0 0 0 0 0 %10.7f ", $wfe/sqrt(2.), -$wfe/sqrt(2.);
+    @data1 = split ' ', `./main-mirror.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    $Zt = sprintf "0 %10.7f 0 0 0 0 0 %10.7f ", $wfe/sqrt(2.), $wfe/sqrt(2.);
+    @data2 = split ' ', `./main-mirror.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $Kellip_coef_sa = ($data2[6]-$data1[6])/$wfe**2;
+
+    # Get d(observed image ellipticity)/d(jit*jit) [mas^-2]
+    $sj = sqrt($ref_jit/4.);
+    @data1 = split ' ', `./main-mirror.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Z  $ref_jit 0 $ref_jit 0 0 0 0  0 $sj`;
+    @data2 = split ' ', `./main-mirror.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Z  $ref_jit 0 $ref_jit 0 0 0 0  $sj 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $Kellip_coef_jj = ($data2[6]-$data1[6])/2./$sj**2;
+    $Kbar_jj = log($data2[5]/$data0[5])/$wfe/$sj * 2;
+
+    # Get d(observed image ellipticity)/d(jit*coma) [mas^-1 nm^-1]
+    $sj = sqrt($ref_jit/4.);
+    $Zt = sprintf "0 0 0 %10.7f 0 0 0 0 ", $wfe;
+    @data1 = split ' ', `./main-mirror.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0  -$sj 0`;
+    @data2 = split ' ', `./main-mirror.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0  $sj 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $Kellip_coef_jc = ($data2[6]-$data1[6])/2./$sj/$wfe;
+    $Kbar_jc = log($data2[5]/$data1[5])/2./$wfe/$sj;
+
+    # Get d(observed image ellipticity)/d(jit*trefoil) [mas^-1 nm^-1]
+    $sj = sqrt($ref_jit/4.);
+    $Zt = sprintf "0 0 0 0 0 %10.7f 0 0 ", $wfe;
+    @data1 = split ' ', `./main-mirror.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0  -$sj 0`;
+    @data2 = split ' ', `./main-mirror.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0  $sj 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $Kellip_coef_jt = ($data2[6]-$data1[6])/2./$sj/$wfe;
+
+    print (sprintf "%12.5E %12.5E %12.5E %12.5E\n", $Kellip_coef_fa, $Kellip_coef_cc, $Kellip_coef_ct, $Kellip_coef_sa);
+    print (sprintf "%12.5E %12.5E %12.5E\n", $Kellip_coef_jj, $Kellip_coef_jc, $Kellip_coef_jt);
+    $lw = sqrt($Kellip_coef_jc**2 + $Kellip_coef_jt**2);
+    $ljj1 = sqrt($Kellip_coef_fa**2 + $Kellip_coef_sa**2);
+    $ljj2 = sqrt($Kellip_coef_cc**2 + $Kellip_coef_ct**2) + abs($Kellip_coef_cc);
+    $ljj = ($ljj1>$ljj2? $ljj1: $ljj2)/2.;
+
+    print "norm of Lambda = $L nm^-2\n";
+    print "LOS-WFE = $lw nm^-1 mas^-1\n";
+    print "WFE-WFE = $ljj mas^-2\n";
+
+    # -- TRACE --
+    print "\n .. trace ..\n\n";
+
+    $Zt = sprintf "%10.7f 0 0 0 0 0 0 0 ", $wfe;
+    @data2 = split ' ', `./main.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $Cbar_ff = log($data2[5]/$data0[5])/$wfe**2 * 2.;
+    
+    $Zt = sprintf "0 %10.7f 0 0 0 0 0 0 ", $wfe;
+    @data2 = split ' ', `./main.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $Cbar_aa = log($data2[5]/$data0[5])/$wfe**2 * 2.;
+    
+    $Zt = sprintf "0 0 0 %10.7f 0 0 0 0 ", $wfe;
+    @data2 = split ' ', `./main.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $Cbar_cc = log($data2[5]/$data0[5])/$wfe**2 * 2.;
+    
+    $Zt = sprintf "0 0 0 0 0 %10.7f 0 0 ", $wfe;
+    @data2 = split ' ', `./main.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $Cbar_tt = log($data2[5]/$data0[5])/$wfe**2 * 2.;
+    
+    $Zt = sprintf "0 0 0 0 0 0 0 %10.7f ", $wfe;
+    @data2 = split ' ', `./main.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $Cbar_ss = log($data2[5]/$data0[5])/$wfe**2 * 2.;
+    
+    $Zt = sprintf "%10.7f 0 0 0 0 0 0 %10.7f ", $wfe/sqrt(2.), $wfe/sqrt(2.);
+    @data1 = split ' ', `./main.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    $Zt = sprintf "%10.7f 0 0 0 0 0 0 %10.7f ", $wfe/sqrt(2.), -$wfe/sqrt(2.);
+    @data2 = split ' ', `./main.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $Cbar_fs = log($data2[5]/$data1[5])/$wfe**2;
+
+    print (sprintf "%12.5E %12.5E %12.5E %12.5E %12.5E %12.5E\n", $Cbar_ff, $Cbar_aa, $Cbar_cc, $Cbar_tt, $Cbar_ss, $Cbar_fs);
+
+    # Some Kbars are the same by symmetry so won't re-compute them
+    $Kbar_ff = $Cbar_ff;
+    $Kbar_aa = $Cbar_aa;
+    $Kbar_ss = $Cbar_ss;
+    $Kbar_fs = $Cbar_fs;
+
+    # Kbar_jj, Kbar_jc, Kbar_cc computed above
+
+    $Zt = sprintf "0 0 0 0 0 %10.7f 0 0 ", $wfe;
+    @data2 = split ' ', `./main-mirror.x $ref_pupil $filters{$f} $Nlam 0 $reff 0.0 0.0 $Zt  $ref_jit 0 $ref_jit 0 0 0 0`;
+    #print "@data1\n@data2\n\n";  # <-- TEST OUTPUT
+    $Kbar_tt = log($data2[5]/$data0[5])/$wfe**2 * 2.;
+
+    print(sprintf "%12.5E %12.5E %12.5E %12.5E %12.5E\n", $Kbar_ff, $Kbar_aa, $Kbar_cc, $Kbar_tt, $Kbar_ss);
+    print(sprintf "%12.5E %12.5E\n", $Kbar_jc, $Kbar_jj);
+
+    $Lbar = abs($Cbar_ff+$Cbar_ss)/2. + sqrt(($Cbar_ff-$Cbar_ss)**2/4. + $Cbar_fs**2);
+    if ($Lbar<$Cbar_cc) {$Lbar=$Cbar_cc;}
+    if ($Lbar<$Cbar_tt) {$Lbar=$Cbar_tt;}
+    $Kbar = abs($Kbar_ff+$Kbar_ss)/2. + sqrt(($Kbar_ff-$Kbar_ss)**2/4. + $Kbar_fs**2);
+    if ($Kbar<$Kbar_cc) {$Kbar=$Kbar_cc;}
+    if ($Kbar<$Kbar_tt) {$Kbar=$Kbar_tt;}
+
+    print "norm of Lambdabar = $Lbar nm^-2\n";
+    print "LOS-WFE = $Kbar_jc nm^-1 mas^-1\n";
+    print "WFE-WFE = $Kbar nm^-2\n";
+
+    print "\n";
+}
